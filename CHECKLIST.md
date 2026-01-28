@@ -131,10 +131,10 @@
 | 10.5 | Guardar dinheiro | ✅ | `app/piggy.tsx` |
 | 10.6 | Retirar dinheiro | ✅ | `app/piggy.tsx` |
 | 10.7 | Total geral dos porcos | ✅ | `app/piggy.tsx` |
-| 10.8 | Transferir entre porcos | ⏳ | `app/piggy.tsx` |
-| 10.9 | Transferir do saldo para porco | ⏳ | `app/piggy.tsx` |
-| 10.10 | Histórico do porquinho | ⏳ | `app/piggy.tsx` |
-| 10.11 | Editar/excluir porquinho | ⏳ | `app/piggy.tsx` |
+| 10.8 | Transferir entre porcos | ✅ | `app/piggy.tsx` |
+| 10.9 | Transferir do saldo para porco | ✅ | `app/piggy.tsx` |
+| 10.10 | Histórico do porquinho | ✅ | `app/piggy.tsx` |
+| 10.11 | Editar/excluir porquinho | ✅ | `app/piggy.tsx` |
 
 ---
 
@@ -197,13 +197,13 @@
 | 7. Tela Histórico | 8 | 8 | 100% |
 | 8. Tela Parcelas | 5 | 5 | 100% |
 | 9. Sistema Pagamentos | 4 | 4 | 100% |
-| 10. Porquinhos | 7 | 11 | 64% |
+| 10. Porquinhos | 11 | 11 | 100% |
 | 11. Configurações | 6 | 6 | 100% |
 | 12. Relatórios | 8 | 8 | 100% |
 | 13. Backup | 0 | 2 | 0% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 77/93 tarefas (83%)**
+**Total Geral: 81/93 tarefas (87%)**
 
 ---
 
@@ -219,5 +219,7 @@
 8. ✅ **Detalhes/editar histórico** (Fase 7.7-7.8)
 9. ✅ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5)
 10. ✅ **Relatórios** (Fase 12)
-11. ⏳ **Completar Porquinhos** (Fase 10.8-10.11) ← PRÓXIMO
-12. ⏳ **Ícones e Splash** (Fase 14)
+11. ✅ **Completar Porquinhos** (Fase 10.8-10.11)
+12. ⏳ **Últimas Movimentações Dashboard** (Fase 4.6) ← PRÓXIMO
+13. ⏳ **Backup e Restauração** (Fase 13)
+14. ⏳ **Ícones e Splash** (Fase 14)

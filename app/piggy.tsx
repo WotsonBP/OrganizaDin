@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,6 +22,19 @@ interface Piggy {
   id: number;
   name: string;
   balance: number;
+}
+
+interface PiggyTransaction {
+  id: number;
+  amount: number;
+  type: 'deposit' | 'withdraw' | 'transfer_in' | 'transfer_out';
+  description: string;
+  date: string;
+  related_piggy_id?: number;
+}
+
+interface BalanceInfo {
+  total_balance: number;
 }
 
 export default function PiggyScreen() {
@@ -43,6 +57,25 @@ export default function PiggyScreen() {
   const [hasPassword, setHasPassword] = useState(false);
   const [showSetPassword, setShowSetPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+
+  // Novas funcionalidades
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferFrom, setTransferFrom] = useState<Piggy | null>(null);
+  const [transferTo, setTransferTo] = useState<Piggy | null>(null);
+  const [transferAmount, setTransferAmount] = useState('');
+
+  const [showBalanceTransfer, setShowBalanceTransfer] = useState(false);
+  const [balanceTransferPiggy, setBalanceTransferPiggy] = useState<Piggy | null>(null);
+  const [balanceTransferAmount, setBalanceTransferAmount] = useState('');
+  const [availableBalance, setAvailableBalance] = useState(0);
+
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyPiggy, setHistoryPiggy] = useState<Piggy | null>(null);
+  const [transactions, setTransactions] = useState<PiggyTransaction[]>([]);
+
+  const [showEditPiggy, setShowEditPiggy] = useState(false);
+  const [editingPiggy, setEditingPiggy] = useState<Piggy | null>(null);
+  const [editPiggyName, setEditPiggyName] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -71,6 +104,16 @@ export default function PiggyScreen() {
 
       const total = piggiesData.reduce((sum, p) => sum + p.balance, 0);
       setTotalSaved(total);
+
+      // Carregar saldo disponível
+      const balanceData = await getAll<BalanceInfo>(`
+        SELECT 
+          COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) as total_balance
+        FROM balance_transactions
+      `);
+      if (balanceData.length > 0) {
+        setAvailableBalance(balanceData[0].total_balance);
+      }
     } catch (error) {
       console.log('Error loading piggies:', error);
     }
@@ -185,11 +228,229 @@ export default function PiggyScreen() {
     }
   };
 
+  const handleTransferBetweenPiggies = async () => {
+    if (!transferFrom || !transferTo) {
+      Alert.alert('Erro', 'Selecione os porquinhos');
+      return;
+    }
+
+    if (transferFrom.id === transferTo.id) {
+      Alert.alert('Erro', 'Selecione porquinhos diferentes');
+      return;
+    }
+
+    const amount = parseFloat(transferAmount.replace(',', '.'));
+    if (!amount || amount <= 0) {
+      Alert.alert('Erro', 'Digite um valor válido');
+      return;
+    }
+
+    if (amount > transferFrom.balance) {
+      Alert.alert('Erro', 'Saldo insuficiente no porquinho de origem');
+      return;
+    }
+
+    try {
+      // Atualizar saldo do porquinho de origem
+      await runQuery(
+        'UPDATE piggies SET balance = balance - ?, updated_at = datetime("now") WHERE id = ?',
+        [amount, transferFrom.id]
+      );
+
+      // Atualizar saldo do porquinho de destino
+      await runQuery(
+        'UPDATE piggies SET balance = balance + ?, updated_at = datetime("now") WHERE id = ?',
+        [amount, transferTo.id]
+      );
+
+      // Registrar transação de saída
+      await runQuery(
+        `INSERT INTO piggy_transactions (piggy_id, amount, type, description, date, related_piggy_id)
+         VALUES (?, ?, 'transfer_out', ?, date('now'), ?)`,
+        [transferFrom.id, amount, `Transferência para ${transferTo.name}`, transferTo.id]
+      );
+
+      // Registrar transação de entrada
+      await runQuery(
+        `INSERT INTO piggy_transactions (piggy_id, amount, type, description, date, related_piggy_id)
+         VALUES (?, ?, 'transfer_in', ?, date('now'), ?)`,
+        [transferTo.id, amount, `Transferência de ${transferFrom.name}`, transferFrom.id]
+      );
+
+      setShowTransfer(false);
+      setTransferFrom(null);
+      setTransferTo(null);
+      setTransferAmount('');
+      await loadData();
+
+      Alert.alert('Sucesso', 'Transferência realizada!');
+    } catch (error) {
+      console.log('Error transferring:', error);
+      Alert.alert('Erro', 'Não foi possível realizar a transferência');
+    }
+  };
+
+  const handleTransferFromBalance = async () => {
+    if (!balanceTransferPiggy) return;
+
+    const amount = parseFloat(balanceTransferAmount.replace(',', '.'));
+    if (!amount || amount <= 0) {
+      Alert.alert('Erro', 'Digite um valor válido');
+      return;
+    }
+
+    if (amount > availableBalance) {
+      Alert.alert('Erro', 'Saldo insuficiente');
+      return;
+    }
+
+    try {
+      // Atualizar saldo do porquinho
+      await runQuery(
+        'UPDATE piggies SET balance = balance + ?, updated_at = datetime("now") WHERE id = ?',
+        [amount, balanceTransferPiggy.id]
+      );
+
+      // Registrar saída no saldo
+      await runQuery(
+        `INSERT INTO balance_transactions (amount, description, date, type, method)
+         VALUES (?, ?, date('now'), 'expense', 'cash')`,
+        [amount, `Transferência para porquinho: ${balanceTransferPiggy.name}`]
+      );
+
+      // Registrar entrada no porquinho
+      await runQuery(
+        `INSERT INTO piggy_transactions (piggy_id, amount, type, description, date)
+         VALUES (?, ?, 'deposit', ?, date('now'))`,
+        [balanceTransferPiggy.id, amount, 'Transferência do saldo']
+      );
+
+      setShowBalanceTransfer(false);
+      setBalanceTransferPiggy(null);
+      setBalanceTransferAmount('');
+      await loadData();
+
+      Alert.alert('Sucesso', 'Transferência realizada!');
+    } catch (error) {
+      console.log('Error transferring from balance:', error);
+      Alert.alert('Erro', 'Não foi possível realizar a transferência');
+    }
+  };
+
+  const loadHistory = async (piggy: Piggy) => {
+    try {
+      const history = await getAll<PiggyTransaction>(
+        `SELECT * FROM piggy_transactions 
+         WHERE piggy_id = ? 
+         ORDER BY date DESC, id DESC
+         LIMIT 50`,
+        [piggy.id]
+      );
+      setTransactions(history);
+      setHistoryPiggy(piggy);
+      setShowHistory(true);
+    } catch (error) {
+      console.log('Error loading history:', error);
+      Alert.alert('Erro', 'Não foi possível carregar o histórico');
+    }
+  };
+
+  const handleEditPiggy = async () => {
+    if (!editingPiggy) return;
+
+    if (!editPiggyName.trim()) {
+      Alert.alert('Erro', 'Digite um nome para o porquinho');
+      return;
+    }
+
+    try {
+      await runQuery(
+        'UPDATE piggies SET name = ?, updated_at = datetime("now") WHERE id = ?',
+        [editPiggyName.trim(), editingPiggy.id]
+      );
+
+      setShowEditPiggy(false);
+      setEditingPiggy(null);
+      setEditPiggyName('');
+      await loadData();
+
+      Alert.alert('Sucesso', 'Porquinho atualizado!');
+    } catch (error) {
+      console.log('Error editing piggy:', error);
+      Alert.alert('Erro', 'Não foi possível editar o porquinho');
+    }
+  };
+
+  const handleDeletePiggy = (piggy: Piggy) => {
+    Alert.alert(
+      'Excluir Porquinho',
+      `Tem certeza que deseja excluir "${piggy.name}"? ${
+        piggy.balance > 0
+          ? `O saldo de ${formatCurrency(piggy.balance)} será perdido.`
+          : ''
+      }`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await runQuery('DELETE FROM piggies WHERE id = ?', [piggy.id]);
+              await loadData();
+              Alert.alert('Sucesso', 'Porquinho excluído!');
+            } catch (error) {
+              console.log('Error deleting piggy:', error);
+              Alert.alert('Erro', 'Não foi possível excluir o porquinho');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
+      case 'deposit':
+        return 'arrow-down-circle';
+      case 'withdraw':
+        return 'arrow-up-circle';
+      case 'transfer_in':
+        return 'arrow-forward-circle';
+      case 'transfer_out':
+        return 'arrow-back-circle';
+      default:
+        return 'help-circle';
+    }
+  };
+
+  const getTransactionColor = (type: string) => {
+    switch (type) {
+      case 'deposit':
+      case 'transfer_in':
+        return colors.success;
+      case 'withdraw':
+      case 'transfer_out':
+        return colors.warning;
+      default:
+        return colors.textMuted;
+    }
   };
 
   // Tela de definir senha
@@ -306,6 +567,24 @@ export default function PiggyScreen() {
                     {formatCurrency(piggy.balance)}
                   </Text>
                 </View>
+                <View style={styles.piggyHeaderActions}>
+                  <Pressable
+                    style={styles.iconButton}
+                    onPress={() => loadHistory(piggy)}
+                  >
+                    <Ionicons name="time-outline" size={20} color={colors.textMuted} />
+                  </Pressable>
+                  <Pressable
+                    style={styles.iconButton}
+                    onPress={() => {
+                      setEditingPiggy(piggy);
+                      setEditPiggyName(piggy.name);
+                      setShowEditPiggy(true);
+                    }}
+                  >
+                    <Ionicons name="pencil" size={20} color={colors.textMuted} />
+                  </Pressable>
+                </View>
               </View>
               <View style={styles.piggyActions}>
                 <Pressable
@@ -316,7 +595,7 @@ export default function PiggyScreen() {
                     setShowTransaction(true);
                   }}
                 >
-                  <Ionicons name="add" size={20} color={colors.success} />
+                  <Ionicons name="add" size={18} color={colors.success} />
                   <Text style={[styles.actionBtnText, { color: colors.success }]}>
                     Guardar
                   </Text>
@@ -329,7 +608,7 @@ export default function PiggyScreen() {
                     setShowTransaction(true);
                   }}
                 >
-                  <Ionicons name="remove" size={20} color={colors.warning} />
+                  <Ionicons name="remove" size={18} color={colors.warning} />
                   <Text style={[styles.actionBtnText, { color: colors.warning }]}>
                     Retirar
                   </Text>
@@ -339,7 +618,7 @@ export default function PiggyScreen() {
           ))
         )}
 
-        {/* Botão Adicionar Porquinho */}
+        {/* Botões de Ação */}
         <Pressable
           style={[styles.addPiggyButton, { backgroundColor: colors.surface }]}
           onPress={() => setShowAddPiggy(true)}
@@ -349,6 +628,30 @@ export default function PiggyScreen() {
             Novo Porquinho
           </Text>
         </Pressable>
+
+        {piggies.length >= 2 && (
+          <Pressable
+            style={[styles.addPiggyButton, { backgroundColor: colors.surface }]}
+            onPress={() => setShowTransfer(true)}
+          >
+            <Ionicons name="swap-horizontal" size={24} color={colors.info} />
+            <Text style={[styles.addPiggyText, { color: colors.info }]}>
+              Transferir entre Porcos
+            </Text>
+          </Pressable>
+        )}
+
+        {piggies.length > 0 && (
+          <Pressable
+            style={[styles.addPiggyButton, { backgroundColor: colors.surface }]}
+            onPress={() => setShowBalanceTransfer(true)}
+          >
+            <Ionicons name="cash" size={24} color={colors.success} />
+            <Text style={[styles.addPiggyText, { color: colors.success }]}>
+              Transferir do Saldo
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       {/* Modal Adicionar Porquinho */}
@@ -438,6 +741,261 @@ export default function PiggyScreen() {
                 </Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Transferir entre Porcos */}
+      <Modal visible={showTransfer} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Transferir entre Porcos
+            </Text>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>DE:</Text>
+            <ScrollView style={styles.pickerScroll} horizontal showsHorizontalScrollIndicator={false}>
+              {piggies.map(piggy => (
+                <Pressable
+                  key={piggy.id}
+                  style={[
+                    styles.pickerItem,
+                    {
+                      backgroundColor: transferFrom?.id === piggy.id ? colors.primary : colors.surfaceVariant,
+                    },
+                  ]}
+                  onPress={() => setTransferFrom(piggy)}
+                >
+                  <Text style={[styles.pickerText, { color: transferFrom?.id === piggy.id ? '#FFFFFF' : colors.text }]}>
+                    {piggy.name}
+                  </Text>
+                  <Text style={[styles.pickerBalance, { color: transferFrom?.id === piggy.id ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    {formatCurrency(piggy.balance)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: Spacing.md }]}>PARA:</Text>
+            <ScrollView style={styles.pickerScroll} horizontal showsHorizontalScrollIndicator={false}>
+              {piggies.map(piggy => (
+                <Pressable
+                  key={piggy.id}
+                  style={[
+                    styles.pickerItem,
+                    {
+                      backgroundColor: transferTo?.id === piggy.id ? colors.primary : colors.surfaceVariant,
+                    },
+                  ]}
+                  onPress={() => setTransferTo(piggy)}
+                >
+                  <Text style={[styles.pickerText, { color: transferTo?.id === piggy.id ? '#FFFFFF' : colors.text }]}>
+                    {piggy.name}
+                  </Text>
+                  <Text style={[styles.pickerBalance, { color: transferTo?.id === piggy.id ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    {formatCurrency(piggy.balance)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surfaceVariant, color: colors.text, marginTop: Spacing.md }]}
+              value={transferAmount}
+              onChangeText={setTransferAmount}
+              placeholder="Valor"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowTransfer(false);
+                  setTransferFrom(null);
+                  setTransferTo(null);
+                  setTransferAmount('');
+                }}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.info }]}
+                onPress={handleTransferBetweenPiggies}
+              >
+                <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Transferir</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Transferir do Saldo */}
+      <Modal visible={showBalanceTransfer} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Transferir do Saldo
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+              Saldo disponível: {formatCurrency(availableBalance)}
+            </Text>
+
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>PARA:</Text>
+            <ScrollView style={styles.pickerScroll} horizontal showsHorizontalScrollIndicator={false}>
+              {piggies.map(piggy => (
+                <Pressable
+                  key={piggy.id}
+                  style={[
+                    styles.pickerItem,
+                    {
+                      backgroundColor: balanceTransferPiggy?.id === piggy.id ? colors.primary : colors.surfaceVariant,
+                    },
+                  ]}
+                  onPress={() => setBalanceTransferPiggy(piggy)}
+                >
+                  <Text style={[styles.pickerText, { color: balanceTransferPiggy?.id === piggy.id ? '#FFFFFF' : colors.text }]}>
+                    {piggy.name}
+                  </Text>
+                  <Text style={[styles.pickerBalance, { color: balanceTransferPiggy?.id === piggy.id ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    {formatCurrency(piggy.balance)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surfaceVariant, color: colors.text, marginTop: Spacing.md }]}
+              value={balanceTransferAmount}
+              onChangeText={setBalanceTransferAmount}
+              placeholder="Valor"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowBalanceTransfer(false);
+                  setBalanceTransferPiggy(null);
+                  setBalanceTransferAmount('');
+                }}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.success }]}
+                onPress={handleTransferFromBalance}
+              >
+                <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Transferir</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Histórico */}
+      <Modal visible={showHistory} transparent animationType="slide">
+        <View style={[styles.historyModal, { backgroundColor: colors.background }]}>
+          <View style={styles.historyHeader}>
+            <View>
+              <Text style={[styles.historyTitle, { color: colors.text }]}>
+                Histórico
+              </Text>
+              {historyPiggy && (
+                <Text style={[styles.historySubtitle, { color: colors.textSecondary }]}>
+                  {historyPiggy.name}
+                </Text>
+              )}
+            </View>
+            <Pressable onPress={() => setShowHistory(false)}>
+              <Ionicons name="close" size={28} color={colors.text} />
+            </Pressable>
+          </View>
+
+          <FlatList
+            data={transactions}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.historyList}
+            ListEmptyComponent={
+              <View style={styles.emptyHistory}>
+                <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyHistoryText, { color: colors.textMuted }]}>
+                  Nenhuma movimentação ainda
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={[styles.historyItem, { backgroundColor: colors.surface }]}>
+                <View style={[styles.historyIcon, { backgroundColor: getTransactionColor(item.type) + '20' }]}>
+                  <Ionicons name={getTransactionIcon(item.type)} size={24} color={getTransactionColor(item.type)} />
+                </View>
+                <View style={styles.historyInfo}>
+                  <Text style={[styles.historyDesc, { color: colors.text }]}>
+                    {item.description}
+                  </Text>
+                  <Text style={[styles.historyDate, { color: colors.textSecondary }]}>
+                    {formatDate(item.date)}
+                  </Text>
+                </View>
+                <Text style={[styles.historyAmount, { color: getTransactionColor(item.type) }]}>
+                  {item.type === 'withdraw' || item.type === 'transfer_out' ? '-' : '+'}
+                  {formatCurrency(item.amount)}
+                </Text>
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
+
+      {/* Modal Editar Porquinho */}
+      <Modal visible={showEditPiggy} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Editar Porquinho
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surfaceVariant, color: colors.text }]}
+              value={editPiggyName}
+              onChangeText={setEditPiggyName}
+              placeholder="Nome"
+              placeholderTextColor={colors.textMuted}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowEditPiggy(false);
+                  setEditingPiggy(null);
+                  setEditPiggyName('');
+                }}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                onPress={handleEditPiggy}
+              >
+                <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Salvar</Text>
+              </Pressable>
+            </View>
+            {editingPiggy && (
+              <Pressable
+                style={[styles.deleteBtn, { backgroundColor: colors.error + '20' }]}
+                onPress={() => {
+                  setShowEditPiggy(false);
+                  handleDeletePiggy(editingPiggy);
+                }}
+              >
+                <Ionicons name="trash" size={18} color={colors.error} />
+                <Text style={[styles.deleteBtnText, { color: colors.error }]}>
+                  Excluir Porquinho
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </Modal>
@@ -552,6 +1110,13 @@ const styles = StyleSheet.create({
   piggyInfo: {
     flex: 1,
   },
+  piggyHeaderActions: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  iconButton: {
+    padding: Spacing.xs,
+  },
   piggyName: {
     fontSize: FontSize.lg,
     fontWeight: '600',
@@ -633,5 +1198,103 @@ const styles = StyleSheet.create({
   modalBtnText: {
     fontSize: FontSize.md,
     fontWeight: '600',
+  },
+  fieldLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    marginBottom: Spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pickerScroll: {
+    maxHeight: 80,
+  },
+  pickerItem: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginRight: Spacing.sm,
+    minWidth: 120,
+  },
+  pickerText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  pickerBalance: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  deleteBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  historyModal: {
+    flex: 1,
+    paddingTop: Spacing.xxl,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  historyTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: 'bold',
+  },
+  historySubtitle: {
+    fontSize: FontSize.md,
+    marginTop: 2,
+  },
+  historyList: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+  },
+  historyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  historyInfo: {
+    flex: 1,
+  },
+  historyDesc: {
+    fontSize: FontSize.md,
+    fontWeight: '500',
+  },
+  historyDate: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  historyAmount: {
+    fontSize: FontSize.lg,
+    fontWeight: 'bold',
+  },
+  emptyHistory: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl,
+  },
+  emptyHistoryText: {
+    fontSize: FontSize.md,
+    marginTop: Spacing.md,
   },
 });

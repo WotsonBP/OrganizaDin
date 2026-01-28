@@ -235,6 +235,12 @@ export default function SettingsScreen() {
           title="OrganizaDin"
           subtitle="Versão 1.0.0"
         />
+        <SettingItem
+          icon="flask"
+          title="Diagnóstico do Banco"
+          subtitle="Testar persistência de dados"
+          onPress={() => router.push('/database-test')}
+        />
       </View>
     </ScrollView>
   );

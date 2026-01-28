@@ -27,7 +27,7 @@
 | 2.2 | Funções de acesso ao banco | ✅ | `src/database/database.ts` |
 | 2.3 | Contexto do banco | ✅ | `src/contexts/DatabaseContext.tsx` |
 | 2.4 | Categorias padrão | ✅ | Inseridas no schema |
-| 2.5 | Testar persistência de dados | ⏳ | - |
+| 2.5 | Testar persistência de dados | ✅ | `app/database-test.tsx` |
 
 ---
 
@@ -189,7 +189,7 @@
 | Fase | Concluído | Total | % |
 |------|-----------|-------|---|
 | 1. Estrutura Base | 7 | 7 | 100% |
-| 2. Banco de Dados | 4 | 5 | 80% |
+| 2. Banco de Dados | 5 | 5 | 100% |
 | 3. Navegação | 4 | 4 | 100% |
 | 4. Tela Início | 7 | 7 | 100% |
 | 5. Movimentações Saldo | 6 | 6 | 100% |
@@ -203,7 +203,7 @@
 | 13. Backup | 0 | 2 | 0% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 82/93 tarefas (88%)**
+**Total Geral: 83/93 tarefas (89%)**
 
 ---
 
@@ -221,6 +221,6 @@
 10. ✅ **Relatórios** (Fase 12)
 11. ✅ **Completar Porquinhos** (Fase 10.8-10.11)
 12. ✅ **Últimas Movimentações Dashboard** (Fase 4.6)
-13. ⏳ **Testar Persistência de Dados** (Fase 2.5) ← PRÓXIMO
-14. ⏳ **Backup e Restauração** (Fase 13)
+13. ✅ **Testar Persistência de Dados** (Fase 2.5)
+14. ⏳ **Backup e Restauração** (Fase 13) ← PRÓXIMO
 15. ⏳ **Ícones e Splash** (Fase 14)

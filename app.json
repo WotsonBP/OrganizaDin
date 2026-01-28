@@ -4,25 +4,60 @@
     "slug": "organizadin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/icon.png",
     "scheme": "organizadin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "privacy": "unlisted",
+    "primaryColor": "#1B5E20",
+    "icon": "./assets/icon.png",
     "splash": {
-      "image": "./src/assets/images/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#1B5E20"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.organizadin.app"
+      "bundleIdentifier": "com.organizadin.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Permite acessar fotos para anexar às compras.",
+        "NSPhotoLibraryAddUsageDescription": "Permite salvar fotos da galeria.",
+        "NSCameraUsageDescription": "Permite tirar fotos para anexar às compras.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1B5E20"
       },
-      "package": "com.organizadin.app"
+      "package": "com.organizadin.app",
+      "versionCode": 1,
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.READ_SMS",
+        "android.permission.SEND_SMS",
+        "android.permission.CALL_PHONE"
+      ],
+      "allowBackup": false,
+      "networkSecurityConfig": {
+        "cleartext": false
+      }
     },
     "plugins": [
       "expo-router",
@@ -30,12 +65,33 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Permite acessar fotos para anexar às compras."
+          "photosPermission": "Permite acessar fotos para anexar às compras.",
+          "cameraPermission": "Permite tirar fotos para anexar às compras."
+        }
+      ],
+      [
+        "expo-screen-capture",
+        {
+          "preventScreenCapture": true
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d8645ba6-73ae-4017-b8e3-0a231c293a63"
+      },
+      "router": {}
+    },
+    "owner": "wotsonbonze",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/d8645ba6-73ae-4017-b8e3-0a231c293a63"
     }
   }
 }

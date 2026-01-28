@@ -5,10 +5,19 @@ import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DatabaseProvider, useDatabase } from '../src/contexts/DatabaseContext';
 import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
+import { SecurityProvider } from '../src/contexts/SecurityContext';
+import { setupDebugProtection } from '../src/security/debugProtection';
+import { setupGlobalErrorHandlers } from '../src/security/errorMonitoring';
 
 function RootLayoutNav() {
   const { isReady, error } = useDatabase();
   const { colors, theme } = useTheme();
+
+  // Configurar proteções de segurança ao iniciar
+  useEffect(() => {
+    setupDebugProtection();
+    setupGlobalErrorHandlers();
+  }, []);
 
   if (error) {
     return (
@@ -75,11 +84,13 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <DatabaseProvider>
-        <ThemeProvider>
-          <RootLayoutNav />
-        </ThemeProvider>
-      </DatabaseProvider>
+      <SecurityProvider>
+        <DatabaseProvider>
+          <ThemeProvider>
+            <RootLayoutNav />
+          </ThemeProvider>
+        </DatabaseProvider>
+      </SecurityProvider>
     </GestureHandlerRootView>
   );
 }

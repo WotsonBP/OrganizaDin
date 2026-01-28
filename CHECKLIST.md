@@ -175,9 +175,9 @@
 ## Fase 14: Polimento Final
 | # | Tarefa | Status | Arquivo/Pasta |
 |---|--------|--------|---------------|
-| 14.1 | Criar ícone do app | ⏳ | `src/assets/images/icon.png` |
-| 14.2 | Criar splash screen | ⏳ | `src/assets/images/splash.png` |
-| 14.3 | Adaptive icon (Android) | ⏳ | `src/assets/images/adaptive-icon.png` |
+| 14.1 | Criar ícone do app | ✅ | `assets/icon.png` (1024x1024 PNG) |
+| 14.2 | Criar splash screen | ✅ | `assets/splash.png` (2778x2778 PNG) |
+| 14.3 | Adaptive icon (Android) | ✅ | `assets/adaptive-icon.png` (1024x1024 PNG) |
 | 14.4 | Testar em dispositivo real | ⏳ | - |
 | 14.5 | Corrigir bugs encontrados | ⏳ | - |
 | 14.6 | Build de produção | ⏳ | `eas build` |
@@ -201,9 +201,9 @@
 | 11. Configurações | 6 | 6 | 100% |
 | 12. Relatórios | 8 | 8 | 100% |
 | 13. Backup | 2 | 2 | 100% |
-| 14. Polimento | 0 | 6 | 0% |
+| 14. Polimento | 3 | 6 | 50% |
 
-**Total Geral: 85/93 tarefas (91%)**
+**Total Geral: 88/93 tarefas (95%)**
 
 ---
 
@@ -223,4 +223,6 @@
 12. ✅ **Últimas Movimentações Dashboard** (Fase 4.6)
 13. ✅ **Testar Persistência de Dados** (Fase 2.5)
 14. ✅ **Backup e Restauração** (Fase 13)
-15. ⏳ **Ícones e Splash** (Fase 14) ← PRÓXIMO
+15. ✅ **Ícones e Splash** (Fase 14.1-14.3)
+16. ⏳ **Testar em dispositivo real** (Fase 14.4) ← PRÓXIMO
+17. ⏳ **Build de produção** (Fase 14.6)

@@ -6,14 +6,13 @@
     "orientation": "portrait",
     "scheme": "organizadin",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "privacy": "unlisted",
     "primaryColor": "#1B5E20",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B5E20"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -35,7 +34,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1B5E20"
+        "backgroundColor": "#000000"
       },
       "package": "com.organizadin.app",
       "versionCode": 1,
@@ -67,12 +66,6 @@
         {
           "photosPermission": "Permite acessar fotos para anexar às compras.",
           "cameraPermission": "Permite tirar fotos para anexar às compras."
-        }
-      ],
-      [
-        "expo-screen-capture",
-        {
-          "preventScreenCapture": true
         }
       ]
     ],

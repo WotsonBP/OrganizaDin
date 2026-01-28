@@ -1,36 +1,39 @@
 /**
  * Módulo de proteção contra screenshots
  * Bloqueia capturas de tela em telas sensíveis
+ * 
+ * NOTA: Proteção de screenshot desabilitada temporariamente
+ * Para habilitar, instale: expo-screen-capture
  */
 
 import { useEffect } from 'react';
-import { AppState, Platform } from 'react-native';
-import * as ScreenCapture from 'expo-screen-capture';
+import { Platform } from 'react-native';
 
 /**
  * Habilita proteção contra screenshots
+ * NOTA: Implementação placeholder - expo-screen-capture não está instalado
  */
 export function enableScreenshotProtection(): void {
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    ScreenCapture.preventScreenCaptureAsync().catch((error) => {
-      console.warn('Erro ao habilitar proteção de screenshot:', error);
-    });
+  if (__DEV__) {
+    console.log('[Screenshot Protection] Proteção desabilitada - expo-screen-capture não instalado');
   }
+  // Placeholder - implementar quando expo-screen-capture for adicionado
 }
 
 /**
  * Desabilita proteção contra screenshots
+ * NOTA: Implementação placeholder - expo-screen-capture não está instalado
  */
 export function disableScreenshotProtection(): void {
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    ScreenCapture.allowScreenCaptureAsync().catch((error) => {
-      console.warn('Erro ao desabilitar proteção de screenshot:', error);
-    });
+  if (__DEV__) {
+    console.log('[Screenshot Protection] Proteção desabilitada - expo-screen-capture não instalado');
   }
+  // Placeholder - implementar quando expo-screen-capture for adicionado
 }
 
 /**
  * Hook para proteger tela contra screenshots
+ * NOTA: Implementação placeholder - expo-screen-capture não está instalado
  */
 export function useScreenshotProtection(enabled: boolean = true): void {
   useEffect(() => {
@@ -38,18 +41,13 @@ export function useScreenshotProtection(enabled: boolean = true): void {
       return;
     }
 
-    enableScreenshotProtection();
+    if (__DEV__) {
+      console.log('[Screenshot Protection] Hook desabilitado - expo-screen-capture não instalado');
+    }
 
-    // Reativar proteção quando app volta ao foreground
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        enableScreenshotProtection();
-      }
-    });
-
+    // Placeholder - implementar quando expo-screen-capture for adicionado
     return () => {
-      disableScreenshotProtection();
-      subscription.remove();
+      // Cleanup placeholder
     };
   }, [enabled]);
 }

@@ -80,9 +80,9 @@
 | 6.9 | Toggle recorrente | ✅ | `app/add-purchase.tsx` |
 | 6.10 | Anexar imagem/foto | ✅ | `app/add-purchase.tsx` |
 | 6.11 | Gerar parcelas automáticas | ✅ | `app/add-purchase.tsx` |
-| 6.12 | Compra com múltiplos itens | ⏳ | `app/add-purchase.tsx` |
-| 6.13 | Editar compra existente | ⏳ | - |
-| 6.14 | Excluir compra | ⏳ | - |
+| 6.12 | Compra com múltiplos itens | ✅ | `app/add-purchase.tsx` |
+| 6.13 | Editar compra existente | ✅ | `app/edit-purchase.tsx` |
+| 6.14 | Excluir compra | ✅ | `app/edit-purchase.tsx` |
 
 ---
 
@@ -93,10 +93,10 @@
 | 7.2 | Agrupamento por mês | ✅ | `app/(tabs)/history.tsx` |
 | 7.3 | Blocos expansíveis | ✅ | `app/(tabs)/history.tsx` |
 | 7.4 | Busca por texto | ✅ | `app/(tabs)/history.tsx` |
-| 7.5 | Filtros (mês, categoria, cartão) | ⏳ | `app/(tabs)/history.tsx` |
+| 7.5 | Filtros (mês, categoria, cartão) | ✅ | `app/(tabs)/history.tsx` |
 | 7.6 | Indicador de imagem | ✅ | `app/(tabs)/history.tsx` |
-| 7.7 | Abrir detalhes ao tocar | ⏳ | - |
-| 7.8 | Editar/apagar item | ⏳ | - |
+| 7.7 | Abrir detalhes ao tocar | ✅ | `app/(tabs)/history.tsx` |
+| 7.8 | Editar/apagar item | ✅ | `app/edit-balance.tsx` |
 
 ---
 
@@ -114,10 +114,10 @@
 ## Fase 9: Sistema de Pagamentos
 | # | Tarefa | Status | Arquivo/Pasta |
 |---|--------|--------|---------------|
-| 9.1 | Marcar parcela como paga | ⏳ | - |
-| 9.2 | Marcar todas do mês como pagas | ⏳ | - |
-| 9.3 | Marcar todas do cartão como pagas | ⏳ | - |
-| 9.4 | Deduzir do saldo ao pagar | ⏳ | - |
+| 9.1 | Marcar parcela como paga | ✅ | `app/(tabs)/installments.tsx` |
+| 9.2 | Marcar todas do mês como pagas | ✅ | `app/(tabs)/installments.tsx` |
+| 9.3 | Marcar todas do cartão como pagas | ✅ | `app/(tabs)/installments.tsx` |
+| 9.4 | Deduzir do saldo ao pagar | ✅ | `app/(tabs)/installments.tsx` |
 
 ---
 
@@ -193,17 +193,17 @@
 | 3. Navegação | 4 | 4 | 100% |
 | 4. Tela Início | 6 | 7 | 86% |
 | 5. Movimentações Saldo | 6 | 6 | 100% |
-| 6. Compras Cartão | 11 | 14 | 79% |
-| 7. Tela Histórico | 5 | 8 | 63% |
+| 6. Compras Cartão | 14 | 14 | 100% |
+| 7. Tela Histórico | 8 | 8 | 100% |
 | 8. Tela Parcelas | 5 | 5 | 100% |
-| 9. Sistema Pagamentos | 0 | 4 | 0% |
+| 9. Sistema Pagamentos | 4 | 4 | 100% |
 | 10. Porquinhos | 7 | 11 | 64% |
 | 11. Configurações | 4 | 6 | 67% |
 | 12. Relatórios | 0 | 8 | 0% |
 | 13. Backup | 0 | 2 | 0% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 57/93 tarefas (61%)**
+**Total Geral: 67/93 tarefas (72%)**
 
 ---
 
@@ -212,9 +212,11 @@
 1. ✅ **Instalar dependências** → `npm install`
 2. ✅ **Testar no Expo Go** → `npx expo start`
 3. ✅ **Tela Entrada/Saída de Saldo** (Fase 5)
-4. ⏳ **Sistema de Pagamentos** (Fase 9) ← PRÓXIMO
-5. ⏳ **Filtros no Histórico** (Fase 7.5)
-6. ⏳ **Compra com múltiplos itens** (Fase 6.12)
-7. ⏳ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5)
-8. ⏳ **Relatórios** (Fase 12)
-9. ⏳ **Ícones e Splash** (Fase 14)
+4. ✅ **Sistema de Pagamentos** (Fase 9)
+5. ✅ **Filtros no Histórico** (Fase 7.5)
+6. ✅ **Compra com múltiplos itens** (Fase 6.12)
+7. ✅ **Editar/excluir compra** (Fase 6.13-6.14)
+8. ✅ **Detalhes/editar histórico** (Fase 7.7-7.8)
+9. ⏳ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5) ← PRÓXIMO
+10. ⏳ **Relatórios** (Fase 12)
+11. ⏳ **Ícones e Splash** (Fase 14)

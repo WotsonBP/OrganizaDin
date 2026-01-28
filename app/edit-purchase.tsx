@@ -11,11 +11,11 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../src/contexts/ThemeContext';
 import { Spacing, FontSize, BorderRadius } from '../src/constants/theme';
-import { getAll, runQuery } from '../src/database';
+import { getAll, getFirst, runQuery } from '../src/database';
 
 interface Category {
   id: number;
@@ -33,18 +33,41 @@ interface PurchaseItem {
   name: string;
   amount: string;
   imageUri: string | null;
+  isNew?: boolean;
 }
 
-export default function AddPurchaseScreen() {
+interface ExistingPurchase {
+  id: number;
+  total_amount: number;
+  description: string;
+  date: string;
+  card_id: number;
+  category_id: number;
+  installments: number;
+  is_recurring: number;
+  image_uri: string | null;
+}
+
+interface ExistingItem {
+  id: number;
+  name: string;
+  amount: number;
+  image_uri: string | null;
+}
+
+export default function EditPurchaseScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const purchaseId = parseInt(id || '0', 10);
 
+  const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState('');
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [installments, setInstallments] = useState('1');
+  const [installmentsCount, setInstallmentsCount] = useState('1');
   const [isRecurring, setIsRecurring] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
 
@@ -56,15 +79,14 @@ export default function AddPurchaseScreen() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [cards, setCards] = useState<CreditCard[]>([]);
-  const [showCardModal, setShowCardModal] = useState(false);
-  const [newCardName, setNewCardName] = useState('');
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [purchaseId]);
 
   const loadData = async () => {
     try {
+      // Carregar categorias e cartões
       const categoriesData = await getAll<Category>(
         'SELECT id, name, icon FROM categories ORDER BY name'
       );
@@ -74,29 +96,47 @@ export default function AddPurchaseScreen() {
         'SELECT id, name FROM credit_cards ORDER BY name'
       );
       setCards(cardsData);
+
+      // Carregar dados da compra
+      const purchase = await getFirst<ExistingPurchase>(
+        'SELECT * FROM credit_purchases WHERE id = ?',
+        [purchaseId]
+      );
+
+      if (purchase) {
+        setAmount(purchase.total_amount.toString().replace('.', ','));
+        setDescription(purchase.description);
+        setDate(purchase.date);
+        setSelectedCard(purchase.card_id);
+        setSelectedCategory(purchase.category_id);
+        setInstallmentsCount(purchase.installments.toString());
+        setIsRecurring(purchase.is_recurring === 1);
+        setImageUri(purchase.image_uri);
+
+        // Carregar itens da compra
+        const existingItems = await getAll<ExistingItem>(
+          'SELECT * FROM purchase_items WHERE purchase_id = ?',
+          [purchaseId]
+        );
+
+        if (existingItems.length > 0) {
+          setIsMultiItem(true);
+          setItems(
+            existingItems.map(item => ({
+              id: item.id.toString(),
+              name: item.name,
+              amount: item.amount.toString().replace('.', ','),
+              imageUri: item.image_uri,
+              isNew: false,
+            }))
+          );
+        }
+      }
     } catch (error) {
       console.log('Error loading data:', error);
-    }
-  };
-
-  const handleAddCard = async () => {
-    if (!newCardName.trim()) {
-      Alert.alert('Erro', 'Digite o nome do cartão');
-      return;
-    }
-
-    try {
-      const result = await runQuery(
-        'INSERT INTO credit_cards (name) VALUES (?)',
-        [newCardName.trim()]
-      );
-      setSelectedCard(result.lastInsertRowId);
-      setNewCardName('');
-      setShowCardModal(false);
-      await loadData();
-    } catch (error) {
-      console.log('Error adding card:', error);
-      Alert.alert('Erro', 'Não foi possível adicionar o cartão');
+      Alert.alert('Erro', 'Não foi possível carregar os dados da compra');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -141,10 +181,11 @@ export default function AddPurchaseScreen() {
     }
 
     const newItem: PurchaseItem = {
-      id: Date.now().toString(),
+      id: `new_${Date.now()}`,
       name: newItemName.trim(),
       amount: newItemAmount,
       imageUri: null,
+      isNew: true,
     };
 
     setItems(prev => [...prev, newItem]);
@@ -161,6 +202,46 @@ export default function AddPurchaseScreen() {
       const itemAmount = parseFloat(item.amount.replace(',', '.')) || 0;
       return total + itemAmount;
     }, 0);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Excluir Compra',
+      'Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Excluir itens
+              await runQuery(
+                'DELETE FROM purchase_items WHERE purchase_id = ?',
+                [purchaseId]
+              );
+              // Excluir parcelas
+              await runQuery(
+                'DELETE FROM installments WHERE purchase_id = ?',
+                [purchaseId]
+              );
+              // Excluir compra
+              await runQuery(
+                'DELETE FROM credit_purchases WHERE id = ?',
+                [purchaseId]
+              );
+
+              Alert.alert('Sucesso', 'Compra excluída!', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            } catch (error) {
+              console.log('Error deleting purchase:', error);
+              Alert.alert('Erro', 'Não foi possível excluir a compra');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -196,64 +277,100 @@ export default function AddPurchaseScreen() {
       return;
     }
 
-    const installmentsValue = parseInt(installments, 10) || 1;
-
     try {
-      // Inserir compra
-      const purchaseResult = await runQuery(
-        `INSERT INTO credit_purchases
-         (total_amount, description, date, card_id, category_id, installments, is_recurring, image_uri)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      // Atualizar compra
+      await runQuery(
+        `UPDATE credit_purchases
+         SET total_amount = ?, description = ?, date = ?, card_id = ?,
+             category_id = ?, is_recurring = ?, image_uri = ?
+         WHERE id = ?`,
         [
           amountValue,
           description.trim(),
           date,
           selectedCard,
           selectedCategory,
-          installmentsValue,
           isRecurring ? 1 : 0,
           isMultiItem ? null : imageUri,
+          purchaseId,
         ]
       );
 
-      const purchaseId = purchaseResult.lastInsertRowId;
+      // Atualizar parcelas pendentes com novo valor
+      const installmentsValue = parseInt(installmentsCount, 10) || 1;
       const installmentAmount = amountValue / installmentsValue;
 
-      // Inserir itens individuais (se multi-item)
+      await runQuery(
+        `UPDATE installments
+         SET amount = ?
+         WHERE purchase_id = ? AND status = 'pending'`,
+        [installmentAmount, purchaseId]
+      );
+
+      // Gerenciar itens
       if (isMultiItem) {
-        for (const item of items) {
-          const itemAmount = parseFloat(item.amount.replace(',', '.'));
+        // Remover itens antigos que não estão mais na lista
+        const existingIds = items
+          .filter(i => !i.isNew)
+          .map(i => i.id);
+
+        if (existingIds.length > 0) {
           await runQuery(
-            `INSERT INTO purchase_items
-             (purchase_id, name, amount, image_uri)
-             VALUES (?, ?, ?, ?)`,
-            [purchaseId, item.name, itemAmount, item.imageUri]
+            `DELETE FROM purchase_items
+             WHERE purchase_id = ? AND id NOT IN (${existingIds.join(',')})`,
+            [purchaseId]
+          );
+        } else {
+          await runQuery(
+            'DELETE FROM purchase_items WHERE purchase_id = ?',
+            [purchaseId]
           );
         }
-      }
 
-      // Criar parcelas
-      for (let i = 1; i <= installmentsValue; i++) {
-        const dueDate = new Date(date);
-        dueDate.setMonth(dueDate.getMonth() + i - 1);
-        const dueDateStr = dueDate.toISOString().split('T')[0];
-
+        // Atualizar itens existentes e inserir novos
+        for (const item of items) {
+          const itemAmount = parseFloat(item.amount.replace(',', '.'));
+          if (item.isNew) {
+            await runQuery(
+              `INSERT INTO purchase_items (purchase_id, name, amount, image_uri)
+               VALUES (?, ?, ?, ?)`,
+              [purchaseId, item.name, itemAmount, item.imageUri]
+            );
+          } else {
+            await runQuery(
+              `UPDATE purchase_items
+               SET name = ?, amount = ?, image_uri = ?
+               WHERE id = ?`,
+              [item.name, itemAmount, item.imageUri, parseInt(item.id, 10)]
+            );
+          }
+        }
+      } else {
+        // Remover todos os itens se não é multi-item
         await runQuery(
-          `INSERT INTO installments
-           (purchase_id, installment_number, amount, due_date, status)
-           VALUES (?, ?, ?, ?, 'pending')`,
-          [purchaseId, i, installmentAmount, dueDateStr]
+          'DELETE FROM purchase_items WHERE purchase_id = ?',
+          [purchaseId]
         );
       }
 
-      Alert.alert('Sucesso', 'Compra adicionada!', [
+      Alert.alert('Sucesso', 'Compra atualizada!', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
       console.log('Error saving purchase:', error);
-      Alert.alert('Erro', 'Não foi possível salvar a compra');
+      Alert.alert('Erro', 'Não foi possível salvar as alterações');
     }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+          Carregando...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -460,38 +577,8 @@ export default function AddPurchaseScreen() {
                 </Text>
               </Pressable>
             ))}
-            <Pressable
-              style={[styles.chip, { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border }]}
-              onPress={() => setShowCardModal(true)}
-            >
-              <Ionicons name="add" size={16} color={colors.textMuted} />
-              <Text style={[styles.chipText, { color: colors.textMuted }]}>Novo</Text>
-            </Pressable>
           </View>
         </View>
-
-        {/* Modal Novo Cartão */}
-        {showCardModal && (
-          <View style={[styles.inlineModal, { backgroundColor: colors.surface }]}>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.surfaceVariant, color: colors.text, flex: 1 }]}
-              value={newCardName}
-              onChangeText={setNewCardName}
-              placeholder="Nome do cartão"
-              placeholderTextColor={colors.textMuted}
-              autoFocus
-            />
-            <Pressable
-              style={[styles.modalButton, { backgroundColor: colors.primary }]}
-              onPress={handleAddCard}
-            >
-              <Text style={styles.modalButtonText}>Adicionar</Text>
-            </Pressable>
-            <Pressable onPress={() => setShowCardModal(false)}>
-              <Ionicons name="close" size={24} color={colors.textMuted} />
-            </Pressable>
-          </View>
-        )}
 
         {/* Categoria */}
         <View style={styles.field}>
@@ -523,43 +610,13 @@ export default function AddPurchaseScreen() {
           </View>
         </View>
 
-        {/* Parcelas */}
+        {/* Parcelas (somente leitura) */}
         <View style={styles.field}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Parcelas</Text>
-          <View style={styles.installmentsRow}>
-            {['1', '2', '3', '6', '10', '12'].map(num => (
-              <Pressable
-                key={num}
-                style={[
-                  styles.installmentChip,
-                  {
-                    backgroundColor:
-                      installments === num ? colors.primary : colors.surface,
-                  },
-                ]}
-                onPress={() => setInstallments(num)}
-              >
-                <Text
-                  style={[
-                    styles.installmentText,
-                    { color: installments === num ? '#FFFFFF' : colors.text },
-                  ]}
-                >
-                  {num}x
-                </Text>
-              </Pressable>
-            ))}
-            <TextInput
-              style={[
-                styles.installmentInput,
-                { backgroundColor: colors.surface, color: colors.text },
-              ]}
-              value={installments}
-              onChangeText={setInstallments}
-              keyboardType="numeric"
-              placeholder="Outro"
-              placeholderTextColor={colors.textMuted}
-            />
+          <View style={[styles.readOnlyField, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.readOnlyText, { color: colors.textMuted }]}>
+              {installmentsCount}x (não editável após criação)
+            </Text>
           </View>
         </View>
 
@@ -625,14 +682,24 @@ export default function AddPurchaseScreen() {
           </View>
         )}
 
-        {/* Botão Salvar */}
-        <Pressable
-          style={[styles.saveButton, { backgroundColor: colors.primary }]}
-          onPress={handleSave}
-        >
-          <Ionicons name="checkmark" size={24} color="#FFFFFF" />
-          <Text style={styles.saveButtonText}>Salvar Compra</Text>
-        </Pressable>
+        {/* Botões de ação */}
+        <View style={styles.actionButtons}>
+          <Pressable
+            style={[styles.deleteButton, { backgroundColor: colors.error }]}
+            onPress={handleDelete}
+          >
+            <Ionicons name="trash" size={24} color="#FFFFFF" />
+            <Text style={styles.deleteButtonText}>Excluir</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.saveButton, { backgroundColor: colors.primary }]}
+            onPress={handleSave}
+          >
+            <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+            <Text style={styles.saveButtonText}>Salvar</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -645,6 +712,14 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.md,
     paddingBottom: Spacing.xxl,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: FontSize.md,
   },
   field: {
     marginBottom: Spacing.lg,
@@ -677,6 +752,13 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     fontSize: FontSize.md,
   },
+  readOnlyField: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  readOnlyText: {
+    fontSize: FontSize.md,
+  },
   chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -696,48 +778,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: FontSize.sm,
     fontWeight: '500',
-  },
-  inlineModal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.lg,
-  },
-  modalButton: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
-  },
-  modalButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: FontSize.sm,
-  },
-  installmentsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    alignItems: 'center',
-  },
-  installmentChip: {
-    width: 48,
-    height: 40,
-    borderRadius: BorderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  installmentText: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  installmentInput: {
-    width: 70,
-    height: 40,
-    borderRadius: BorderRadius.md,
-    textAlign: 'center',
-    fontSize: FontSize.md,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -784,14 +824,33 @@ const styles = StyleSheet.create({
   imageText: {
     fontSize: FontSize.md,
   },
-  saveButton: {
+  actionButtons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  deleteButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     gap: Spacing.sm,
-    marginTop: Spacing.md,
+  },
+  deleteButtonText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.lg,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
   },
   saveButtonText: {
     color: '#FFFFFF',

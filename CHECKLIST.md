@@ -167,8 +167,8 @@
 ## Fase 13: Backup e Restauração
 | # | Tarefa | Status | Arquivo/Pasta |
 |---|--------|--------|---------------|
-| 13.1 | Exportar dados (backup) | ⏳ | - |
-| 13.2 | Importar dados (restaurar) | ⏳ | - |
+| 13.1 | Exportar dados (backup) | ✅ | `app/backup.tsx` |
+| 13.2 | Importar dados (restaurar) | ✅ | `app/backup.tsx` |
 
 ---
 
@@ -200,10 +200,10 @@
 | 10. Porquinhos | 11 | 11 | 100% |
 | 11. Configurações | 6 | 6 | 100% |
 | 12. Relatórios | 8 | 8 | 100% |
-| 13. Backup | 0 | 2 | 0% |
+| 13. Backup | 2 | 2 | 100% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 83/93 tarefas (89%)**
+**Total Geral: 85/93 tarefas (91%)**
 
 ---
 
@@ -222,5 +222,5 @@
 11. ✅ **Completar Porquinhos** (Fase 10.8-10.11)
 12. ✅ **Últimas Movimentações Dashboard** (Fase 4.6)
 13. ✅ **Testar Persistência de Dados** (Fase 2.5)
-14. ⏳ **Backup e Restauração** (Fase 13) ← PRÓXIMO
-15. ⏳ **Ícones e Splash** (Fase 14)
+14. ✅ **Backup e Restauração** (Fase 13)
+15. ⏳ **Ícones e Splash** (Fase 14) ← PRÓXIMO

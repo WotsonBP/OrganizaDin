@@ -212,16 +212,10 @@ export default function SettingsScreen() {
       </Text>
       <View style={styles.section}>
         <SettingItem
-          icon="cloud-upload"
-          title="Backup"
-          subtitle="Exportar dados do app"
-          onPress={() => {/* TODO: Backup */}}
-        />
-        <SettingItem
-          icon="cloud-download"
-          title="Restaurar"
-          subtitle="Importar dados de backup"
-          onPress={() => {/* TODO: Restaurar */}}
+          icon="save"
+          title="Backup e Restauração"
+          subtitle="Exportar e importar dados"
+          onPress={() => router.push('/backup')}
         />
       </View>
 

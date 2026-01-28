@@ -177,13 +177,13 @@ export default function SettingsScreen() {
           icon="pricetags"
           title="Categorias"
           subtitle="Gerenciar categorias de gastos"
-          onPress={() => {/* TODO: Tela de categorias */}}
+          onPress={() => router.push('/manage-categories')}
         />
         <SettingItem
           icon="card"
           title="Cartões"
           subtitle="Gerenciar cartões de crédito"
-          onPress={() => {/* TODO: Tela de cartões */}}
+          onPress={() => router.push('/manage-cards')}
         />
       </View>
 

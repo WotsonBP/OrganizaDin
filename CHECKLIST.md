@@ -144,8 +144,8 @@
 | 11.1 | Layout base | ✅ | `app/(tabs)/settings.tsx` |
 | 11.2 | Alternar tema claro/escuro | ✅ | `app/(tabs)/settings.tsx` |
 | 11.3 | Definir renda mensal fixa | ✅ | `app/(tabs)/settings.tsx` |
-| 11.4 | Gerenciar categorias | ⏳ | `app/manage-categories.tsx` |
-| 11.5 | Gerenciar cartões | ⏳ | `app/manage-cards.tsx` |
+| 11.4 | Gerenciar categorias | ✅ | `app/manage-categories.tsx` |
+| 11.5 | Gerenciar cartões | ✅ | `app/manage-cards.tsx` |
 | 11.6 | Acesso aos Porquinhos | ✅ | `app/(tabs)/settings.tsx` |
 
 ---
@@ -198,12 +198,12 @@
 | 8. Tela Parcelas | 5 | 5 | 100% |
 | 9. Sistema Pagamentos | 4 | 4 | 100% |
 | 10. Porquinhos | 7 | 11 | 64% |
-| 11. Configurações | 4 | 6 | 67% |
+| 11. Configurações | 6 | 6 | 100% |
 | 12. Relatórios | 0 | 8 | 0% |
 | 13. Backup | 0 | 2 | 0% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 67/93 tarefas (72%)**
+**Total Geral: 69/93 tarefas (74%)**
 
 ---
 
@@ -217,6 +217,6 @@
 6. ✅ **Compra com múltiplos itens** (Fase 6.12)
 7. ✅ **Editar/excluir compra** (Fase 6.13-6.14)
 8. ✅ **Detalhes/editar histórico** (Fase 7.7-7.8)
-9. ⏳ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5) ← PRÓXIMO
-10. ⏳ **Relatórios** (Fase 12)
+9. ✅ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5)
+10. ⏳ **Relatórios** (Fase 12) ← PRÓXIMO
 11. ⏳ **Ícones e Splash** (Fase 14)

@@ -196,13 +196,13 @@ export default function SettingsScreen() {
           icon="bar-chart"
           title="Análises"
           subtitle="Gastos por categoria, evolução, etc."
-          onPress={() => {/* TODO: Tela de relatórios */}}
+          onPress={() => router.push('/reports')}
         />
         <SettingItem
           icon="calendar"
           title="Resumão dos Próximos Meses"
           subtitle="Previsão financeira futura"
-          onPress={() => {/* TODO: Tela de previsão */}}
+          onPress={() => router.push('/future-summary')}
         />
       </View>
 

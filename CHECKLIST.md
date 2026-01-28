@@ -153,14 +153,14 @@
 ## Fase 12: Relatórios e Análises
 | # | Tarefa | Status | Arquivo/Pasta |
 |---|--------|--------|---------------|
-| 12.1 | Tela de relatórios | ⏳ | `app/reports.tsx` |
-| 12.2 | Gastos por mês | ⏳ | - |
-| 12.3 | Gastos por categoria | ⏳ | - |
-| 12.4 | Gastos por cartão | ⏳ | - |
-| 12.5 | Entrada vs Saída | ⏳ | - |
-| 12.6 | Mês que mais gastou | ⏳ | - |
-| 12.7 | Evolução financeira | ⏳ | - |
-| 12.8 | Resumão próximos meses | ⏳ | `app/future-summary.tsx` |
+| 12.1 | Tela de relatórios | ✅ | `app/reports.tsx` |
+| 12.2 | Gastos por mês | ✅ | `app/reports.tsx` |
+| 12.3 | Gastos por categoria | ✅ | `app/reports.tsx` |
+| 12.4 | Gastos por cartão | ✅ | `app/reports.tsx` |
+| 12.5 | Entrada vs Saída | ✅ | `app/reports.tsx` |
+| 12.6 | Mês que mais gastou | ✅ | `app/reports.tsx` |
+| 12.7 | Evolução financeira | ✅ | `app/reports.tsx` |
+| 12.8 | Resumão próximos meses | ✅ | `app/future-summary.tsx` |
 
 ---
 
@@ -199,11 +199,11 @@
 | 9. Sistema Pagamentos | 4 | 4 | 100% |
 | 10. Porquinhos | 7 | 11 | 64% |
 | 11. Configurações | 6 | 6 | 100% |
-| 12. Relatórios | 0 | 8 | 0% |
+| 12. Relatórios | 8 | 8 | 100% |
 | 13. Backup | 0 | 2 | 0% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 69/93 tarefas (74%)**
+**Total Geral: 77/93 tarefas (83%)**
 
 ---
 
@@ -218,5 +218,6 @@
 7. ✅ **Editar/excluir compra** (Fase 6.13-6.14)
 8. ✅ **Detalhes/editar histórico** (Fase 7.7-7.8)
 9. ✅ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5)
-10. ⏳ **Relatórios** (Fase 12) ← PRÓXIMO
-11. ⏳ **Ícones e Splash** (Fase 14)
+10. ✅ **Relatórios** (Fase 12)
+11. ⏳ **Completar Porquinhos** (Fase 10.8-10.11) ← PRÓXIMO
+12. ⏳ **Ícones e Splash** (Fase 14)

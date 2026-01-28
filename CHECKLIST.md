@@ -49,7 +49,7 @@
 | 4.3 | Card total cartão (mês) | ✅ | `app/(tabs)/index.tsx` |
 | 4.4 | Card previsão próximo mês | ✅ | `app/(tabs)/index.tsx` |
 | 4.5 | Ações rápidas | ✅ | `app/(tabs)/index.tsx` |
-| 4.6 | Últimas movimentações | ⏳ | `app/(tabs)/index.tsx` |
+| 4.6 | Últimas movimentações | ✅ | `app/(tabs)/index.tsx` |
 | 4.7 | Pull to refresh | ✅ | `app/(tabs)/index.tsx` |
 
 ---
@@ -191,7 +191,7 @@
 | 1. Estrutura Base | 7 | 7 | 100% |
 | 2. Banco de Dados | 4 | 5 | 80% |
 | 3. Navegação | 4 | 4 | 100% |
-| 4. Tela Início | 6 | 7 | 86% |
+| 4. Tela Início | 7 | 7 | 100% |
 | 5. Movimentações Saldo | 6 | 6 | 100% |
 | 6. Compras Cartão | 14 | 14 | 100% |
 | 7. Tela Histórico | 8 | 8 | 100% |
@@ -203,7 +203,7 @@
 | 13. Backup | 0 | 2 | 0% |
 | 14. Polimento | 0 | 6 | 0% |
 
-**Total Geral: 81/93 tarefas (87%)**
+**Total Geral: 82/93 tarefas (88%)**
 
 ---
 
@@ -220,6 +220,7 @@
 9. ✅ **Gerenciar Categorias/Cartões** (Fase 11.4-11.5)
 10. ✅ **Relatórios** (Fase 12)
 11. ✅ **Completar Porquinhos** (Fase 10.8-10.11)
-12. ⏳ **Últimas Movimentações Dashboard** (Fase 4.6) ← PRÓXIMO
-13. ⏳ **Backup e Restauração** (Fase 13)
-14. ⏳ **Ícones e Splash** (Fase 14)
+12. ✅ **Últimas Movimentações Dashboard** (Fase 4.6)
+13. ⏳ **Testar Persistência de Dados** (Fase 2.5) ← PRÓXIMO
+14. ⏳ **Backup e Restauração** (Fase 13)
+15. ⏳ **Ícones e Splash** (Fase 14)

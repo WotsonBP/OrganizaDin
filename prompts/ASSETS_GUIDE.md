@@ -105,6 +105,17 @@ O Expo gera automaticamente:
 
 ## Como Gerar Assets
 
+### Opção 0: Script do Projeto (Recomendado)
+
+O projeto inclui um script que lê as imagens em `src/assets/` e gera em `./assets/` nos tamanhos corretos (1024×1024 para ícones, 1284×2778 para splash) e em PNG.
+
+```bash
+npm install
+npm run prepare-assets
+```
+
+Requer as imagens em `src/assets/icon.png`, `src/assets/adaptive-icon.png` e `src/assets/splash.png`. O resultado fica em `./assets/`, que é o caminho usado pelo `app.json`. Depende do pacote `sharp` (instalado com `npm install`).
+
 ### Opção 1: Usando Ferramentas de Design
 
 #### Figma / Adobe XD / Sketch
@@ -187,7 +198,7 @@ img.save('./assets/splash.png')
 
 ## Checklist Antes de Publicar
 
-- [ ] icon.png criado (1024x1024)
+- [ ] icon.png criado (1024x1024) — use `npm run prepare-assets` para gerar a partir de `src/assets/`
 - [ ] adaptive-icon.png criado (1024x1024)
 - [ ] splash.png criado (1284x2778)
 - [ ] Screenshots preparados (mínimo 3 para iOS, 2 para Android)

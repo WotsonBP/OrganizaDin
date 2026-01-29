@@ -16,7 +16,8 @@
     "build:ios:preview": "eas build --platform ios --profile preview",
     "build:ios:production": "eas build --platform ios --profile production",
     "submit:android": "eas submit --platform android",
-    "submit:ios": "eas submit --platform ios"
+    "submit:ios": "eas submit --platform ios",
+    "prepare-assets": "node scripts/prepare-store-assets.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
@@ -30,6 +31,7 @@
     "expo-file-system": "~19.0.0",
     "expo-image-picker": "~17.0.0",
     "expo-linking": "~7.0.0",
+    "expo-notifications": "~0.31.0",
     "expo-router": "~5.0.0",
     "expo-secure-store": "~15.0.0",
     "expo-sqlite": "~16.0.0",
@@ -45,6 +47,7 @@
     "@babel/core": "^7.25.0",
     "@types/react": "^19.0.0",
     "babel-preset-expo": "^11.0.0",
+    "sharp": "^0.33.5",
     "typescript": "~5.3.0"
   },
   "private": true

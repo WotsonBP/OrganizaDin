@@ -182,6 +182,7 @@ export function validateAndSanitizeBackup(backup: BackupData): {
       date: transaction.date,
       type: transaction.type,
       method: transaction.method,
+      notes: transaction.notes ? sanitizeString(transaction.notes, 500) : null,
     });
   }
 
@@ -213,6 +214,7 @@ export function validateAndSanitizeBackup(backup: BackupData): {
       is_recurring: purchase.is_recurring ? 1 : 0,
       has_multiple_items: purchase.has_multiple_items ? 1 : 0,
       image_uri: purchase.image_uri ? sanitizeString(purchase.image_uri, 500) : null,
+      notes: purchase.notes ? sanitizeString(purchase.notes, 500) : null,
     });
   }
 

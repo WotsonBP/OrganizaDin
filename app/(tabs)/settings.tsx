@@ -225,6 +225,12 @@ export default function SettingsScreen() {
       </Text>
       <View style={styles.section}>
         <SettingItem
+          icon="book"
+          title="Como usar o app"
+          subtitle="Guia rápido para novos usuários"
+          onPress={() => router.push('/user-manual')}
+        />
+        <SettingItem
           icon="information-circle"
           title="OrganizaDin"
           subtitle="Versão 1.0.0"

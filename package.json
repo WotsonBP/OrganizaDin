@@ -12,6 +12,8 @@
     "build:android:preview": "eas build --platform android --profile preview",
     "build:android:apk": "eas build --platform android --profile preview",
     "build:android:production": "eas build --platform android --profile production",
+    "build:android:aab": "npm install && eas build --platform android --profile production --non-interactive",
+    "build:android:aab:local": "eas build --platform android --profile production --local",
     "build:ios:dev": "eas build --platform ios --profile development",
     "build:ios:preview": "eas build --platform ios --profile preview",
     "build:ios:production": "eas build --platform ios --profile production",
@@ -44,6 +46,7 @@
     "react-native-screens": "~4.10.0"
   },
   "devDependencies": {
+    "eas-cli": "^15.0.0",
     "@babel/core": "^7.25.0",
     "@types/react": "^19.0.0",
     "babel-preset-expo": "^11.0.0",

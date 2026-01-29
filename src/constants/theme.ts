@@ -10,20 +10,20 @@ export const Colors = {
     textSecondary: '#B0B0B0',
     textMuted: '#757575',
     border: '#333333',
-    error: '#EF5350',
-    warning: '#FFA726',
+    error: '#FF1744',             // Vermelho neon
+    warning: '#FF9100',           // Laranja neon
     success: '#00E676',           // Verde neon
-    info: '#42A5F5',
+    info: '#40C4FF',              // Azul neon
     // Cores específicas do app
-    income: '#00E676',      // Entrada de dinheiro (verde neon)
-    expense: '#EF5350',     // Saída de dinheiro
-    credit: '#00E676',      // Crédito 1x (verde neon)
-    debit: '#42A5F5',       // Débito/Pix
-    recurring: '#AB47BC',   // Recorrente (roxo)
-    installmentHigh: '#EF5350',   // 3+ parcelas (vermelho)
-    installmentMedium: '#FFA726', // 2 parcelas (laranja)
+    income: '#00E676',            // Entrada de dinheiro (verde neon)
+    expense: '#FF1744',           // Saída de dinheiro (vermelho neon)
+    credit: '#00E676',            // Crédito 1x (verde neon)
+    debit: '#40C4FF',             // Débito/Pix (azul neon)
+    recurring: '#AB47BC',         // Recorrente (roxo)
+    installmentHigh: '#FF1744',   // 3+ parcelas (vermelho neon)
+    installmentMedium: '#FF9100', // 2 parcelas (laranja neon)
     installmentLow: '#00E676',    // 1 parcela (verde neon)
-    balanceLow: '#EF5350',        // Saldo < 150
+    balanceLow: '#FF1744',        // Saldo < 150 (vermelho neon)
     balanceOk: '#00E676',         // Saldo >= 150 (verde neon)
   },
   light: {

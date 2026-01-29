@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS balance_transactions (
   date TEXT NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
   method TEXT NOT NULL CHECK(method IN ('pix', 'debit', 'cash')),
+  notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -53,6 +54,7 @@ CREATE TABLE IF NOT EXISTS credit_purchases (
   is_recurring INTEGER DEFAULT 0,
   has_multiple_items INTEGER DEFAULT 0,
   image_uri TEXT,
+  notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (card_id) REFERENCES credit_cards(id) ON DELETE CASCADE,

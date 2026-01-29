@@ -8,6 +8,18 @@ import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
 import { SecurityProvider } from '../src/contexts/SecurityContext';
 import { setupDebugProtection } from '../src/security/debugProtection';
 import { setupGlobalErrorHandlers } from '../src/security/errorMonitoring';
+import * as Notifications from 'expo-notifications';
+import { checkAndNotifyLastInstallment } from '../src/utils/installmentNotifications';
+
+// Exibir notificações quando o app está em primeiro plano
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 function RootLayoutNav() {
   const { isReady, error } = useDatabase();
@@ -18,6 +30,12 @@ function RootLayoutNav() {
     setupDebugProtection();
     setupGlobalErrorHandlers();
   }, []);
+
+  // Notificação fim do mês: última parcela no mês seguinte
+  useEffect(() => {
+    if (!isReady) return;
+    checkAndNotifyLastInstallment().catch(() => {});
+  }, [isReady]);
 
   if (error) {
     return (

@@ -38,6 +38,7 @@ export default function AddBalanceScreen() {
   const [type, setType] = useState<TransactionType>('income');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [method, setMethod] = useState<PaymentMethod>('pix');
 
@@ -56,9 +57,9 @@ export default function AddBalanceScreen() {
 
     try {
       await runQuery(
-        `INSERT INTO balance_transactions (amount, description, date, type, method)
-         VALUES (?, ?, ?, ?, ?)`,
-        [amountValue, description.trim(), date, type, method]
+        `INSERT INTO balance_transactions (amount, description, notes, date, type, method)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [amountValue, description.trim(), notes.trim() || null, date, type, method]
       );
 
       Alert.alert(
@@ -172,6 +173,19 @@ export default function AddBalanceScreen() {
             onChangeText={setDescription}
             placeholder={type === 'income' ? 'Ex: Salário, Freelance...' : 'Ex: Conta de luz, Mercado...'}
             placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        {/* Notas (opcional) */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Notas</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text }]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Observações adicionais (opcional)"
+            placeholderTextColor={colors.textMuted}
+            multiline
           />
         </View>
 

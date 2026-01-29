@@ -47,6 +47,7 @@ export default function AddPurchaseScreen() {
   const [installments, setInstallments] = useState('1');
   const [isRecurring, setIsRecurring] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
 
   // Multi-item state
   const [isMultiItem, setIsMultiItem] = useState(false);
@@ -68,7 +69,12 @@ export default function AddPurchaseScreen() {
       const categoriesData = await getAll<Category>(
         'SELECT id, name, icon FROM categories ORDER BY name'
       );
-      setCategories(categoriesData);
+      // Garantir uma categoria por nome (evita duplicatas na UI)
+      const byName = new Map<string, Category>();
+      for (const cat of categoriesData) {
+        if (!byName.has(cat.name)) byName.set(cat.name, cat);
+      }
+      setCategories(Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name)));
 
       const cardsData = await getAll<CreditCard>(
         'SELECT id, name FROM credit_cards ORDER BY name'
@@ -202,8 +208,8 @@ export default function AddPurchaseScreen() {
       // Inserir compra
       const purchaseResult = await runQuery(
         `INSERT INTO credit_purchases
-         (total_amount, description, date, card_id, category_id, installments, is_recurring, image_uri)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (total_amount, description, date, card_id, category_id, installments, is_recurring, image_uri, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           amountValue,
           description.trim(),
@@ -213,6 +219,7 @@ export default function AddPurchaseScreen() {
           installmentsValue,
           isRecurring ? 1 : 0,
           isMultiItem ? null : imageUri,
+          notes.trim() || null,
         ]
       );
 
@@ -419,6 +426,19 @@ export default function AddPurchaseScreen() {
             onChangeText={setDescription}
             placeholder="Ex: Compras no mercado"
             placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        {/* Notas (opcional) */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Notas</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text }]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Observações adicionais (opcional)"
+            placeholderTextColor={colors.textMuted}
+            multiline
           />
         </View>
 

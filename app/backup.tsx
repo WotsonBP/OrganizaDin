@@ -239,9 +239,9 @@ export default function BackupScreen() {
       // Importar transações de saldo
       for (const transaction of backup.data.balance_transactions) {
         await runQuery(
-          `INSERT INTO balance_transactions (amount, description, date, type, method)
-           VALUES (?, ?, ?, ?, ?)`,
-          [transaction.amount, transaction.description, transaction.date, transaction.type, transaction.method]
+          `INSERT INTO balance_transactions (amount, description, notes, date, type, method)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [transaction.amount, transaction.description, transaction.notes ?? null, transaction.date, transaction.type, transaction.method]
         );
       }
 
@@ -259,8 +259,8 @@ export default function BackupScreen() {
         const categoryId = category.length > 0 ? category[0].id : 1;
 
         const result = await runQuery(
-          `INSERT INTO credit_purchases (total_amount, description, date, card_id, category_id, installments, is_recurring, has_multiple_items, image_uri)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO credit_purchases (total_amount, description, date, card_id, category_id, installments, is_recurring, has_multiple_items, image_uri, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             purchase.total_amount,
             purchase.description,
@@ -269,8 +269,9 @@ export default function BackupScreen() {
             categoryId,
             purchase.installments,
             purchase.is_recurring,
-            purchase.has_multiple_items,
+            purchase.has_multiple_items ?? 0,
             purchase.image_uri,
+            purchase.notes ?? null,
           ]
         );
         purchaseIdMap.set(purchase.id, result.lastInsertRowId as number);

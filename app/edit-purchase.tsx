@@ -46,6 +46,7 @@ interface ExistingPurchase {
   installments: number;
   is_recurring: number;
   image_uri: string | null;
+  notes?: string | null;
 }
 
 interface ExistingItem {
@@ -70,6 +71,7 @@ export default function EditPurchaseScreen() {
   const [installmentsCount, setInstallmentsCount] = useState('1');
   const [isRecurring, setIsRecurring] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
 
   // Multi-item state
   const [isMultiItem, setIsMultiItem] = useState(false);
@@ -90,7 +92,11 @@ export default function EditPurchaseScreen() {
       const categoriesData = await getAll<Category>(
         'SELECT id, name, icon FROM categories ORDER BY name'
       );
-      setCategories(categoriesData);
+      const byName = new Map<string, Category>();
+      for (const cat of categoriesData) {
+        if (!byName.has(cat.name)) byName.set(cat.name, cat);
+      }
+      setCategories(Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name)));
 
       const cardsData = await getAll<CreditCard>(
         'SELECT id, name FROM credit_cards ORDER BY name'
@@ -106,6 +112,7 @@ export default function EditPurchaseScreen() {
       if (purchase) {
         setAmount(purchase.total_amount.toString().replace('.', ','));
         setDescription(purchase.description);
+        setNotes(purchase.notes ?? '');
         setDate(purchase.date);
         setSelectedCard(purchase.card_id);
         setSelectedCategory(purchase.category_id);
@@ -282,7 +289,7 @@ export default function EditPurchaseScreen() {
       await runQuery(
         `UPDATE credit_purchases
          SET total_amount = ?, description = ?, date = ?, card_id = ?,
-             category_id = ?, is_recurring = ?, image_uri = ?
+             category_id = ?, is_recurring = ?, image_uri = ?, notes = ?
          WHERE id = ?`,
         [
           amountValue,
@@ -292,6 +299,7 @@ export default function EditPurchaseScreen() {
           selectedCategory,
           isRecurring ? 1 : 0,
           isMultiItem ? null : imageUri,
+          notes.trim() || null,
           purchaseId,
         ]
       );
@@ -536,6 +544,19 @@ export default function EditPurchaseScreen() {
             onChangeText={setDescription}
             placeholder="Ex: Compras no mercado"
             placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        {/* Notas (opcional) */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Notas</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text }]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Observações adicionais (opcional)"
+            placeholderTextColor={colors.textMuted}
+            multiline
           />
         </View>
 

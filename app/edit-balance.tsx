@@ -32,6 +32,7 @@ interface ExistingTransaction {
   date: string;
   type: string;
   method: string;
+  notes?: string | null;
 }
 
 const PAYMENT_METHODS: MethodOption[] = [
@@ -50,6 +51,7 @@ export default function EditBalanceScreen() {
   const [type, setType] = useState<TransactionType>('income');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   const [date, setDate] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('pix');
 
@@ -68,6 +70,7 @@ export default function EditBalanceScreen() {
         setType(transaction.type as TransactionType);
         setAmount(transaction.amount.toString().replace('.', ','));
         setDescription(transaction.description);
+        setNotes(transaction.notes ?? '');
         setDate(transaction.date);
         setMethod(transaction.method as PaymentMethod);
       }
@@ -124,9 +127,9 @@ export default function EditBalanceScreen() {
     try {
       await runQuery(
         `UPDATE balance_transactions
-         SET amount = ?, description = ?, date = ?, type = ?, method = ?
+         SET amount = ?, description = ?, notes = ?, date = ?, type = ?, method = ?
          WHERE id = ?`,
-        [amountValue, description.trim(), date, type, method, transactionId]
+        [amountValue, description.trim(), notes.trim() || null, date, type, method, transactionId]
       );
 
       Alert.alert('Sucesso', 'Movimentação atualizada!', [
@@ -248,6 +251,19 @@ export default function EditBalanceScreen() {
             onChangeText={setDescription}
             placeholder={type === 'income' ? 'Ex: Salário, Freelance...' : 'Ex: Conta de luz, Mercado...'}
             placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        {/* Notas (opcional) */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Notas</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.surface, color: colors.text }]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Observações adicionais (opcional)"
+            placeholderTextColor={colors.textMuted}
+            multiline
           />
         </View>
 

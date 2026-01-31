@@ -9,7 +9,7 @@ import {
   TextInput,
   Modal,
   FlatList,
-  Alert,
+
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -617,18 +617,12 @@ export default function HistoryScreen() {
                             {transaction.cardName && ` • ${transaction.cardName}`}
                             {transaction.categoryName && ` • ${transaction.categoryName}`}
                           </Text>
-                          {transaction.notes ? (
-                            <Pressable
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                Alert.alert('Nota', transaction.notes!);
-                              }}
-                              hitSlop={8}
-                            >
-                              <Ionicons name="document-text-outline" size={14} color={colors.warning} />
-                            </Pressable>
-                          ) : null}
                         </View>
+                        {transaction.notes ? (
+                          <Text style={[styles.transactionNotes, { color: colors.warning }]} numberOfLines={2}>
+                            {transaction.notes}
+                          </Text>
+                        ) : null}
                       </View>
                       <View style={styles.transactionRight}>
                         <View style={styles.transactionAmount}>
@@ -680,7 +674,7 @@ export default function HistoryScreen() {
                 {installmentsNotes ? (
                   <View style={styles.installmentsNotesRow}>
                     <Ionicons name="document-text-outline" size={14} color={colors.warning} />
-                    <Text style={[styles.installmentsNotesText, { color: colors.textMuted }]}>
+                    <Text style={[styles.installmentsNotesText, { color: colors.warning }]}>
                       {installmentsNotes}
                     </Text>
                   </View>
@@ -1043,6 +1037,11 @@ const styles = StyleSheet.create({
   transactionMeta: {
     fontSize: FontSize.sm,
     flexShrink: 1,
+  },
+  transactionNotes: {
+    fontSize: FontSize.sm,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   transactionAmount: {
     alignItems: 'flex-end',

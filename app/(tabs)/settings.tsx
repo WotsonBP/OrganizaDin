@@ -8,9 +8,11 @@ import {
   Switch,
   TextInput,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
@@ -233,7 +235,8 @@ export default function SettingsScreen() {
         <SettingItem
           icon="information-circle"
           title="OrganizaDin"
-          subtitle="Versão 1.0.0"
+          subtitle="Versão 1.0.0 • Política de Privacidade"
+          onPress={() => WebBrowser.openBrowserAsync('https://sites.google.com/view/polticadeprivacidadorganizadin')}
         />
         <SettingItem
           icon="flask"

@@ -75,7 +75,8 @@
           "photosPermission": "Permite acessar fotos para anexar às compras.",
           "cameraPermission": "Permite tirar fotos para anexar às compras."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

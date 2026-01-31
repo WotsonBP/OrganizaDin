@@ -534,25 +534,17 @@ export default function InstallmentsScreen() {
                   style={[styles.statusIndicator, { backgroundColor: statusColor }]}
                 />
                 <View style={styles.cardInfo}>
-                  <View style={styles.cardTitleRow}>
-                    <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                      {item.description}
-                    </Text>
-                    {item.notes ? (
-                      <Pressable
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          Alert.alert('Nota', item.notes!);
-                        }}
-                        hitSlop={8}
-                      >
-                        <Ionicons name="document-text-outline" size={14} color={colors.warning} />
-                      </Pressable>
-                    ) : null}
-                  </View>
+                  <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                    {item.description}
+                  </Text>
                   <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
                     {item.cardName}
                   </Text>
+                  {item.notes ? (
+                    <Text style={[styles.cardNotes, { color: colors.warning }]} numberOfLines={2}>
+                      {item.notes}
+                    </Text>
+                  ) : null}
                 </View>
                 <View style={styles.cardRight}>
                   <Text style={[styles.installmentValue, { color: colors.text }]}>
@@ -819,17 +811,17 @@ const styles = StyleSheet.create({
   cardInfo: {
     flex: 1,
   },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   cardTitle: {
     fontSize: FontSize.md,
     fontWeight: '600',
   },
   cardSubtitle: {
     fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  cardNotes: {
+    fontSize: FontSize.sm,
+    fontStyle: 'italic',
     marginTop: 2,
   },
   cardRight: {

@@ -8,7 +8,7 @@ import {
   Pressable,
   Modal,
   FlatList,
-  Alert,
+
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { getAll, getFirst } from '../../src/database';
+import { ScrambleText } from '../../src/components/ScrambleText';
 
 interface FutureMonth {
   month: string;
@@ -223,11 +224,6 @@ export default function HomeScreen() {
     });
   };
 
-  const displayCurrency = (value: number) => {
-    if (hideValues) return 'R$ •••••';
-    return formatCurrency(value);
-  };
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
     const now = new Date();
@@ -312,23 +308,21 @@ export default function HomeScreen() {
         onPress={loadBalanceHistory}
       >
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
-            Saldo Disponível
-          </Text>
-          <View style={styles.cardHeaderIcons}>
+          <View style={styles.cardHeaderLabel}>
             <Pressable onPress={(e) => { e.stopPropagation(); toggleHideValues(); }} hitSlop={8}>
               <Ionicons
                 name={hideValues ? 'eye-off-outline' : 'eye-outline'}
-                size={22}
+                size={20}
                 color={colors.textMuted}
               />
             </Pressable>
-            <Ionicons name="wallet-outline" size={24} color={balanceColor} />
+            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+              Saldo Disponível
+            </Text>
           </View>
+          <Ionicons name="wallet-outline" size={24} color={balanceColor} />
         </View>
-        <Text style={[styles.cardValue, { color: balanceColor }]}>
-          {displayCurrency(balance)}
-        </Text>
+        <ScrambleText style={[styles.cardValue, { color: balanceColor }]} text={formatCurrency(balance)} isHidden={hideValues} />
         <Text style={[styles.cardSubtext, { color: colors.textMuted }]}>
           Toque para ver histórico
         </Text>
@@ -342,9 +336,7 @@ export default function HomeScreen() {
           </Text>
           <Ionicons name="card-outline" size={24} color={colors.warning} />
         </View>
-        <Text style={[styles.cardValue, { color: colors.warning }]}>
-          {displayCurrency(creditTotal)}
-        </Text>
+        <ScrambleText style={[styles.cardValue, { color: colors.warning }]} text={formatCurrency(creditTotal)} isHidden={hideValues} />
         <Text style={[styles.cardSubtext, { color: colors.textMuted }]}>
           Este mês
         </Text>
@@ -368,9 +360,7 @@ export default function HomeScreen() {
             />
           </View>
         </View>
-        <Text style={[styles.cardValue, { color: projectionColor }]}>
-          {displayCurrency(nextMonthProjection)}
-        </Text>
+        <ScrambleText style={[styles.cardValue, { color: projectionColor }]} text={formatCurrency(nextMonthProjection)} isHidden={hideValues} />
         <Text style={[styles.cardSubtext, { color: colors.textMuted }]}>
           {nextMonthProjection >= 0 ? 'Vai sobrar' : 'Vai faltar'} • Toque para expandir
         </Text>
@@ -391,14 +381,10 @@ export default function HomeScreen() {
                   <Text style={[styles.futureMonthName, { color: colors.text }]}>
                     {getMonthName(fm.month)}
                   </Text>
-                  <Text style={[styles.futureMonthExpense, { color: colors.warning }]}>
-                    Parcelas: {displayCurrency(fm.total)}
-                  </Text>
+                  <ScrambleText style={[styles.futureMonthExpense, { color: colors.warning }]} text={`Parcelas: ${formatCurrency(fm.total)}`} hiddenText="Parcelas: R$ •••••" isHidden={hideValues} />
                 </View>
                 <View style={styles.futureMonthRight}>
-                  <Text style={[styles.futureMonthProjection, { color: fmColor }]}>
-                    {displayCurrency(projected)}
-                  </Text>
+                  <ScrambleText style={[styles.futureMonthProjection, { color: fmColor }]} text={formatCurrency(projected)} isHidden={hideValues} />
                   <Text style={[styles.futureMonthLabel, { color: fmColor }]}>
                     {projected >= 0 ? 'Sobra' : 'Falta'}
                   </Text>
@@ -541,30 +527,23 @@ export default function HomeScreen() {
                       </>
                     )}
                   </View>
+                  {transaction.notes ? (
+                    <Text style={[styles.transactionNotes, { color: colors.warning }]} numberOfLines={2}>
+                      {transaction.notes}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.transactionAmount}>
-                  <Text style={[
-                    styles.transactionValue,
-                    { color: getTransactionColor(transaction) }
-                  ]}>
-                    {hideValues ? 'R$ •••••' : (
+                  <ScrambleText
+                    style={[styles.transactionValue, { color: getTransactionColor(transaction) }]}
+                    text={
                       (transaction.type === 'balance' && transaction.transaction_type === 'expense' ? '-' : '') +
                       (transaction.type === 'balance' && transaction.transaction_type === 'income' ? '+' : '') +
                       formatCurrency(transaction.amount)
-                    )}
-                  </Text>
-                  {transaction.notes ? (
-                    <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        Alert.alert('Nota', transaction.notes!);
-                      }}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="document-text-outline" size={14} color={colors.warning} />
-                    </Pressable>
-                  ) : null}
+                    }
+                    isHidden={hideValues}
+                  />
                 </View>
               </Pressable>
             ))}
@@ -616,7 +595,7 @@ export default function HomeScreen() {
                   {formatDate(item.date)} • {getMethodLabel(item.method)}
                 </Text>
                 {item.notes ? (
-                  <Text style={[styles.balanceHistoryNotes, { color: colors.textSecondary }]} numberOfLines={2}>
+                  <Text style={[styles.balanceHistoryNotes, { color: colors.warning }]} numberOfLines={2}>
                     {item.notes}
                   </Text>
                 ) : null}
@@ -656,6 +635,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   cardHeaderIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  cardHeaderLabel: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
@@ -796,6 +780,11 @@ const styles = StyleSheet.create({
   transactionInstallment: {
     fontSize: FontSize.sm,
     fontWeight: '600',
+  },
+  transactionNotes: {
+    fontSize: FontSize.sm,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   transactionAmount: {
     alignItems: 'flex-end',

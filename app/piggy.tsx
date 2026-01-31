@@ -17,6 +17,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '../src/contexts/ThemeContext';
 import { Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { getAll, getFirst, runQuery } from '../src/database';
+import { ScrambleText } from '../src/components/ScrambleText';
 
 interface Piggy {
   id: number;
@@ -467,11 +468,6 @@ export default function PiggyScreen() {
     });
   };
 
-  const displayCurrency = (value: number) => {
-    if (hideValues) return 'R$ •••••';
-    return formatCurrency(value);
-  };
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
     return date.toLocaleDateString('pt-BR', {
@@ -592,7 +588,7 @@ export default function PiggyScreen() {
             />
           </Pressable>
         </View>
-        <Text style={styles.totalValue}>{displayCurrency(totalSaved)}</Text>
+        <ScrambleText style={styles.totalValue} text={formatCurrency(totalSaved)} isHidden={hideValues} />
       </View>
 
       <ScrollView
@@ -628,9 +624,7 @@ export default function PiggyScreen() {
                   <Text style={[styles.piggyName, { color: colors.text }]}>
                     {piggy.name}
                   </Text>
-                  <Text style={[styles.piggyBalance, { color: colors.primary }]}>
-                    {displayCurrency(piggy.balance)}
-                  </Text>
+                  <ScrambleText style={[styles.piggyBalance, { color: colors.primary }]} text={formatCurrency(piggy.balance)} isHidden={hideValues} />
                 </View>
                 <View style={styles.piggyHeaderActions}>
                   <Pressable

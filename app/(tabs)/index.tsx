@@ -8,6 +8,7 @@ import {
   Pressable,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -55,6 +56,7 @@ interface RecentTransaction {
   card_name?: string;
   category_icon?: string;
   installment_info?: string;
+  notes?: string | null;
 }
 
 export default function HomeScreen() {
@@ -137,13 +139,14 @@ export default function HomeScreen() {
 
       // Carregar últimas transações (mix de saldo e crédito)
       const recentBalance = await getAll<any>(`
-        SELECT 
+        SELECT
           id,
           description,
           amount,
           date,
           type as transaction_type,
           method,
+          notes,
           'balance' as type
         FROM balance_transactions
         ORDER BY date DESC, id DESC
@@ -151,7 +154,7 @@ export default function HomeScreen() {
       `);
 
       const recentCredit = await getAll<any>(`
-        SELECT 
+        SELECT
           cp.id,
           cp.description,
           cp.total_amount as amount,
@@ -159,7 +162,8 @@ export default function HomeScreen() {
           'credit' as type,
           cc.name as card_name,
           c.icon as category_icon,
-          CASE 
+          cp.notes,
+          CASE
             WHEN cp.installments > 1 THEN cp.installments || 'x'
             ELSE NULL
           END as installment_info
@@ -550,6 +554,17 @@ export default function HomeScreen() {
                       formatCurrency(transaction.amount)
                     )}
                   </Text>
+                  {transaction.notes ? (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        Alert.alert('Nota', transaction.notes!);
+                      }}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="document-text-outline" size={14} color={colors.warning} />
+                    </Pressable>
+                  ) : null}
                 </View>
               </Pressable>
             ))}

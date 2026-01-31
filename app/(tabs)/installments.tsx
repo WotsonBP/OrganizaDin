@@ -27,6 +27,7 @@ interface InstallmentItem {
   remainingAmount: number;
   endMonth: string;
   nextInstallmentId: number | null;
+  notes?: string | null;
 }
 
 interface MonthPending {
@@ -130,6 +131,7 @@ export default function InstallmentsScreen() {
         description: string;
         card_id: number;
         card_name: string;
+        notes: string | null;
         installment_amount: number;
         total_installments: number;
         paid_count: number;
@@ -142,6 +144,7 @@ export default function InstallmentsScreen() {
           cp.description,
           cp.card_id,
           cc.name as card_name,
+          cp.notes,
           i.amount as installment_amount,
           cp.installments as total_installments,
           COUNT(CASE WHEN i.status = 'paid' THEN 1 END) as paid_count,
@@ -169,6 +172,7 @@ export default function InstallmentsScreen() {
         remainingAmount: d.installment_amount * (d.total_installments - d.paid_count),
         endMonth: d.max_due_date,
         nextInstallmentId: d.next_installment_id,
+        notes: d.notes,
       }));
 
       setInstallments(items);
@@ -530,9 +534,22 @@ export default function InstallmentsScreen() {
                   style={[styles.statusIndicator, { backgroundColor: statusColor }]}
                 />
                 <View style={styles.cardInfo}>
-                  <Text style={[styles.cardTitle, { color: colors.text }]}>
-                    {item.description}
-                  </Text>
+                  <View style={styles.cardTitleRow}>
+                    <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                      {item.description}
+                    </Text>
+                    {item.notes ? (
+                      <Pressable
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Alert.alert('Nota', item.notes!);
+                        }}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="document-text-outline" size={14} color={colors.warning} />
+                      </Pressable>
+                    ) : null}
+                  </View>
                   <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
                     {item.cardName}
                   </Text>
@@ -801,6 +818,11 @@ const styles = StyleSheet.create({
   },
   cardInfo: {
     flex: 1,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   cardTitle: {
     fontSize: FontSize.md,

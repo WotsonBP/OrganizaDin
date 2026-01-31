@@ -75,7 +75,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   };
 
-  const colors = Colors[theme];
+  const colors = Colors[theme] || Colors.dark;
   const isDark = theme === 'dark';
 
   return (

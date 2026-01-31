@@ -9,6 +9,7 @@ import {
   TextInput,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -29,6 +30,7 @@ interface Transaction {
   categoryId?: number;
   categoryName?: string;
   hasImage?: boolean;
+  notes?: string | null;
   purchaseId?: number;
   balanceId?: number;
   installmentsPaid?: number;
@@ -77,6 +79,7 @@ export default function HistoryScreen() {
   const [showInstallments, setShowInstallments] = useState(false);
   const [installmentsList, setInstallmentsList] = useState<InstallmentDetail[]>([]);
   const [installmentsTitle, setInstallmentsTitle] = useState('');
+  const [installmentsNotes, setInstallmentsNotes] = useState<string | null>(null);
 
   // Opções de filtro
   const [availableMonths, setAvailableMonths] = useState<FilterOption[]>([]);
@@ -111,8 +114,9 @@ export default function HistoryScreen() {
         date: string;
         type: string;
         method: string;
+        notes: string | null;
       }>(`
-        SELECT id, amount, description, date, type, method
+        SELECT id, amount, description, date, type, method, notes
         FROM balance_transactions
         ORDER BY date DESC
       `);
@@ -128,6 +132,7 @@ export default function HistoryScreen() {
         category_id: number;
         category_name: string;
         image_uri: string | null;
+        notes: string | null;
         installments_paid: number;
         installments_total: number;
       }>(`
@@ -141,6 +146,7 @@ export default function HistoryScreen() {
           cp.category_id,
           c.name as category_name,
           cp.image_uri,
+          cp.notes,
           COALESCE((SELECT COUNT(*) FROM installments i WHERE i.purchase_id = cp.id AND i.status = 'paid'), 0) as installments_paid,
           COALESCE((SELECT COUNT(*) FROM installments i WHERE i.purchase_id = cp.id), 0) as installments_total
         FROM credit_purchases cp
@@ -158,6 +164,7 @@ export default function HistoryScreen() {
           date: t.date,
           type: t.type as 'income' | 'expense',
           method: t.method,
+          notes: t.notes,
           balanceId: t.id,
         })),
         ...creditPurchases.map(p => ({
@@ -171,6 +178,7 @@ export default function HistoryScreen() {
           categoryId: p.category_id,
           categoryName: p.category_name,
           hasImage: !!p.image_uri,
+          notes: p.notes,
           purchaseId: p.id,
           installmentsPaid: p.installments_paid,
           installmentsTotal: p.installments_total,
@@ -285,7 +293,7 @@ export default function HistoryScreen() {
     return colors.expense;
   };
 
-  const loadInstallments = async (purchaseId: number, description: string) => {
+  const loadInstallments = async (purchaseId: number, description: string, notes?: string | null) => {
     try {
       const installments = await getAll<InstallmentDetail>(
         `SELECT id, installment_number, amount, due_date, status, paid_at
@@ -296,6 +304,7 @@ export default function HistoryScreen() {
       );
       setInstallmentsList(installments);
       setInstallmentsTitle(description);
+      setInstallmentsNotes(notes ?? null);
       setShowInstallments(true);
     } catch (error) {
       console.log('Error loading installments:', error);
@@ -500,7 +509,7 @@ export default function HistoryScreen() {
       >
         {filteredGroups.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
-            <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+            <Ionicons name="document-text-outline" size={48} color={colors.warning} />
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               {searchText || hasActiveFilters
                 ? 'Nenhum resultado encontrado'
@@ -555,7 +564,7 @@ export default function HistoryScreen() {
                       style={[styles.transactionItem, { backgroundColor: colors.surface }]}
                       onPress={() => {
                         if (transaction.type === 'credit' && transaction.purchaseId) {
-                          loadInstallments(transaction.purchaseId, transaction.description);
+                          loadInstallments(transaction.purchaseId, transaction.description, transaction.notes);
                         } else if ((transaction.type === 'income' || transaction.type === 'expense') && transaction.balanceId) {
                           router.push(`/edit-balance?id=${transaction.balanceId}`);
                         }
@@ -602,11 +611,24 @@ export default function HistoryScreen() {
                             </View>
                           )}
                         </View>
-                        <Text style={[styles.transactionMeta, { color: colors.textMuted }]}>
-                          {formatDate(transaction.date)}
-                          {transaction.cardName && ` • ${transaction.cardName}`}
-                          {transaction.categoryName && ` • ${transaction.categoryName}`}
-                        </Text>
+                        <View style={styles.transactionMetaRow}>
+                          <Text style={[styles.transactionMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                            {formatDate(transaction.date)}
+                            {transaction.cardName && ` • ${transaction.cardName}`}
+                            {transaction.categoryName && ` • ${transaction.categoryName}`}
+                          </Text>
+                          {transaction.notes ? (
+                            <Pressable
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                Alert.alert('Nota', transaction.notes!);
+                              }}
+                              hitSlop={8}
+                            >
+                              <Ionicons name="document-text-outline" size={14} color={colors.warning} />
+                            </Pressable>
+                          ) : null}
+                        </View>
                       </View>
                       <View style={styles.transactionRight}>
                         <View style={styles.transactionAmount}>
@@ -655,6 +677,14 @@ export default function HistoryScreen() {
                 <Text style={[styles.installmentsSubtitle, { color: colors.textSecondary }]}>
                   {installmentsTitle}
                 </Text>
+                {installmentsNotes ? (
+                  <View style={styles.installmentsNotesRow}>
+                    <Ionicons name="document-text-outline" size={14} color={colors.warning} />
+                    <Text style={[styles.installmentsNotesText, { color: colors.textMuted }]}>
+                      {installmentsNotes}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <Pressable onPress={() => setShowInstallments(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
@@ -1004,9 +1034,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
+  transactionMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
   transactionMeta: {
     fontSize: FontSize.sm,
-    marginTop: 2,
+    flexShrink: 1,
   },
   transactionAmount: {
     alignItems: 'flex-end',
@@ -1027,6 +1063,17 @@ const styles = StyleSheet.create({
   installmentsSubtitle: {
     fontSize: FontSize.sm,
     marginTop: 2,
+  },
+  installmentsNotesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: Spacing.xs,
+  },
+  installmentsNotesText: {
+    fontSize: FontSize.sm,
+    fontStyle: 'italic',
+    flex: 1,
   },
   installmentsScroll: {
     maxHeight: 400,

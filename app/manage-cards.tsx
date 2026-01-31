@@ -23,9 +23,9 @@ interface CreditCard {
 }
 
 const COLOR_OPTIONS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
   '#98D8C8', '#6C5CE7', '#A29BFE', '#FD79A8',
-  '#FDCB6E', '#E17055', '#74B9FF', '#A29BFE',
+  '#FDCB6E', '#E17055', '#74B9FF', '#00B894',
   '#55EFC4', '#81ECEC', '#FAB1A0', '#FF7675',
 ];
 

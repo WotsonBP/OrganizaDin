@@ -8,6 +8,7 @@ import {
   Pressable,
   TextInput,
   Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,6 +31,8 @@ interface Transaction {
   hasImage?: boolean;
   purchaseId?: number;
   balanceId?: number;
+  installmentsPaid?: number;
+  installmentsTotal?: number;
 }
 
 interface MonthGroup {
@@ -42,6 +45,15 @@ interface MonthGroup {
 interface FilterOption {
   id: number | string;
   name: string;
+}
+
+interface InstallmentDetail {
+  id: number;
+  installment_number: number;
+  amount: number;
+  due_date: string;
+  status: 'pending' | 'paid';
+  paid_at: string | null;
 }
 
 type FilterType = 'month' | 'category' | 'card' | 'type';
@@ -60,6 +72,11 @@ export default function HistoryScreen() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+
+  // Modal de parcelas
+  const [showInstallments, setShowInstallments] = useState(false);
+  const [installmentsList, setInstallmentsList] = useState<InstallmentDetail[]>([]);
+  const [installmentsTitle, setInstallmentsTitle] = useState('');
 
   // Opções de filtro
   const [availableMonths, setAvailableMonths] = useState<FilterOption[]>([]);
@@ -111,6 +128,8 @@ export default function HistoryScreen() {
         category_id: number;
         category_name: string;
         image_uri: string | null;
+        installments_paid: number;
+        installments_total: number;
       }>(`
         SELECT
           cp.id,
@@ -121,7 +140,9 @@ export default function HistoryScreen() {
           cc.name as card_name,
           cp.category_id,
           c.name as category_name,
-          cp.image_uri
+          cp.image_uri,
+          COALESCE((SELECT COUNT(*) FROM installments i WHERE i.purchase_id = cp.id AND i.status = 'paid'), 0) as installments_paid,
+          COALESCE((SELECT COUNT(*) FROM installments i WHERE i.purchase_id = cp.id), 0) as installments_total
         FROM credit_purchases cp
         LEFT JOIN credit_cards cc ON cp.card_id = cc.id
         LEFT JOIN categories c ON cp.category_id = c.id
@@ -151,6 +172,8 @@ export default function HistoryScreen() {
           categoryName: p.category_name,
           hasImage: !!p.image_uri,
           purchaseId: p.id,
+          installmentsPaid: p.installments_paid,
+          installmentsTotal: p.installments_total,
         })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -259,7 +282,33 @@ export default function HistoryScreen() {
       if (method === 'pix' || method === 'debit') return colors.debit;
       return colors.expense;
     }
-    return colors.credit;
+    return colors.expense;
+  };
+
+  const loadInstallments = async (purchaseId: number, description: string) => {
+    try {
+      const installments = await getAll<InstallmentDetail>(
+        `SELECT id, installment_number, amount, due_date, status, paid_at
+         FROM installments
+         WHERE purchase_id = ?
+         ORDER BY installment_number ASC`,
+        [purchaseId]
+      );
+      setInstallmentsList(installments);
+      setInstallmentsTitle(description);
+      setShowInstallments(true);
+    } catch (error) {
+      console.log('Error loading installments:', error);
+    }
+  };
+
+  const formatInstallmentDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const clearFilters = () => {
@@ -481,11 +530,21 @@ export default function HistoryScreen() {
                     {group.transactions.length} itens
                   </Text>
                 </View>
-                <Ionicons
-                  name={group.isExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color={colors.textSecondary}
-                />
+                <View style={styles.monthHeaderRight}>
+                  <Text style={[styles.monthTotal, { color: colors.expense }]}>
+                    {formatCurrency(
+                      group.transactions.reduce((sum, t) => {
+                        if (t.type === 'income') return sum;
+                        return sum + t.amount;
+                      }, 0)
+                    )}
+                  </Text>
+                  <Ionicons
+                    name={group.isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </View>
               </Pressable>
 
               {group.isExpanded && (
@@ -496,7 +555,7 @@ export default function HistoryScreen() {
                       style={[styles.transactionItem, { backgroundColor: colors.surface }]}
                       onPress={() => {
                         if (transaction.type === 'credit' && transaction.purchaseId) {
-                          router.push(`/edit-purchase?id=${transaction.purchaseId}`);
+                          loadInstallments(transaction.purchaseId, transaction.description);
                         } else if ((transaction.type === 'income' || transaction.type === 'expense') && transaction.balanceId) {
                           router.push(`/edit-balance?id=${transaction.balanceId}`);
                         }
@@ -515,27 +574,66 @@ export default function HistoryScreen() {
                         />
                       </View>
                       <View style={styles.transactionInfo}>
-                        <Text style={[styles.transactionDesc, { color: colors.text }]}>
-                          {transaction.description}
-                        </Text>
+                        <View style={styles.transactionDescRow}>
+                          <Text style={[styles.transactionDesc, { color: colors.text }]} numberOfLines={1}>
+                            {transaction.description}
+                          </Text>
+                          {transaction.type === 'credit' && transaction.installmentsTotal !== undefined && transaction.installmentsTotal > 0 && (
+                            <View style={[
+                              styles.statusBadge,
+                              {
+                                backgroundColor: transaction.installmentsPaid === transaction.installmentsTotal
+                                  ? colors.success + '20'
+                                  : colors.warning + '20'
+                              }
+                            ]}>
+                              <Text style={[
+                                styles.statusBadgeText,
+                                {
+                                  color: transaction.installmentsPaid === transaction.installmentsTotal
+                                    ? colors.success
+                                    : colors.warning
+                                }
+                              ]}>
+                                {transaction.installmentsPaid === transaction.installmentsTotal
+                                  ? 'Pago'
+                                  : `${transaction.installmentsPaid}/${transaction.installmentsTotal}`}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={[styles.transactionMeta, { color: colors.textMuted }]}>
                           {formatDate(transaction.date)}
                           {transaction.cardName && ` • ${transaction.cardName}`}
                           {transaction.categoryName && ` • ${transaction.categoryName}`}
                         </Text>
                       </View>
-                      <View style={styles.transactionAmount}>
-                        <Text
-                          style={[
-                            styles.amountText,
-                            { color: getTransactionColor(transaction.type, transaction.method) },
-                          ]}
-                        >
-                          {transaction.type === 'income' ? '+' : '-'}
-                          {formatCurrency(transaction.amount)}
-                        </Text>
-                        {transaction.hasImage && (
-                          <Ionicons name="image-outline" size={14} color={colors.textMuted} />
+                      <View style={styles.transactionRight}>
+                        <View style={styles.transactionAmount}>
+                          <Text
+                            style={[
+                              styles.amountText,
+                              { color: getTransactionColor(transaction.type, transaction.method) },
+                            ]}
+                          >
+                            {transaction.type === 'income' ? '+' : '-'}
+                            {formatCurrency(transaction.amount)}
+                          </Text>
+                          {transaction.hasImage && (
+                            <Ionicons name="image-outline" size={14} color={colors.textMuted} />
+                          )}
+                        </View>
+                        {transaction.type === 'credit' && transaction.purchaseId && (
+                          <Pressable
+                            style={styles.editIconButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              router.push(`/edit-purchase?id=${transaction.purchaseId}`);
+                            }}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="pencil" size={16} color={colors.textMuted} />
+                          </Pressable>
                         )}
                       </View>
                     </Pressable>
@@ -546,6 +644,77 @@ export default function HistoryScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Modal de Parcelas */}
+      <Modal visible={showInstallments} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Parcelas</Text>
+                <Text style={[styles.installmentsSubtitle, { color: colors.textSecondary }]}>
+                  {installmentsTitle}
+                </Text>
+              </View>
+              <Pressable onPress={() => setShowInstallments(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <FlatList
+              data={installmentsList}
+              keyExtractor={(item) => item.id.toString()}
+              style={styles.installmentsScroll}
+              contentContainerStyle={{ paddingBottom: Spacing.md }}
+              renderItem={({ item }) => (
+                <View style={[styles.installmentItem, { backgroundColor: colors.surfaceVariant }]}>
+                  <View style={styles.installmentLeft}>
+                    <View style={[
+                      styles.installmentStatus,
+                      { backgroundColor: item.status === 'paid' ? colors.success + '20' : colors.warning + '20' }
+                    ]}>
+                      <Ionicons
+                        name={item.status === 'paid' ? 'checkmark-circle' : 'time-outline'}
+                        size={20}
+                        color={item.status === 'paid' ? colors.success : colors.warning}
+                      />
+                    </View>
+                    <View>
+                      <Text style={[styles.installmentNumber, { color: colors.text }]}>
+                        Parcela {item.installment_number}/{installmentsList.length}
+                      </Text>
+                      <Text style={[styles.installmentDate, { color: colors.textMuted }]}>
+                        {formatInstallmentDate(item.due_date)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.installmentRight2}>
+                    <Text style={[
+                      styles.installmentAmount,
+                      { color: item.status === 'paid' ? colors.success : colors.text }
+                    ]}>
+                      {formatCurrency(item.amount)}
+                    </Text>
+                    <Text style={[
+                      styles.installmentStatusText,
+                      { color: item.status === 'paid' ? colors.success : colors.warning }
+                    ]}>
+                      {item.status === 'paid' ? 'Pago' : 'Pendente'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyInstallments}>
+                  <Text style={[styles.emptyInstallmentsText, { color: colors.textMuted }]}>
+                    Nenhuma parcela encontrada
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de Filtros */}
       <Modal visible={showFilters} transparent animationType="slide">
@@ -742,7 +911,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 120,
   },
   emptyState: {
     borderRadius: BorderRadius.lg,
@@ -777,6 +946,16 @@ const styles = StyleSheet.create({
   },
   monthHeaderLeft: {
     gap: 2,
+    flex: 1,
+  },
+  monthHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  monthTotal: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
   },
   monthLabel: {
     fontSize: FontSize.lg,
@@ -806,9 +985,24 @@ const styles = StyleSheet.create({
   transactionInfo: {
     flex: 1,
   },
+  transactionDescRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   transactionDesc: {
     fontSize: FontSize.md,
     fontWeight: '500',
+    flexShrink: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  statusBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
   },
   transactionMeta: {
     fontSize: FontSize.sm,
@@ -818,9 +1012,72 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 2,
   },
+  transactionRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  editIconButton: {
+    padding: Spacing.xs,
+  },
   amountText: {
     fontSize: FontSize.md,
     fontWeight: '600',
+  },
+  installmentsSubtitle: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  installmentsScroll: {
+    maxHeight: 400,
+    paddingHorizontal: Spacing.lg,
+  },
+  installmentItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.sm,
+  },
+  installmentLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  installmentStatus: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  installmentNumber: {
+    fontSize: FontSize.md,
+    fontWeight: '500',
+  },
+  installmentDate: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  installmentRight2: {
+    alignItems: 'flex-end',
+  },
+  installmentAmount: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  installmentStatusText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  emptyInstallments: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  emptyInstallmentsText: {
+    fontSize: FontSize.md,
   },
   // Modal styles
   modalOverlay: {

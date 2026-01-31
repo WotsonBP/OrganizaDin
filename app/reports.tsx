@@ -292,7 +292,7 @@ export default function ReportsScreen() {
                 <View key={index} style={styles.cardItem}>
                   <View style={styles.cardInfo}>
                     <View
-                      style={[styles.cardColorDot, { backgroundColor: item.card_color }]}
+                      style={[styles.cardColorDot, { backgroundColor: item.card_color || colors.primary }]}
                     />
                     <Text style={[styles.cardName, { color: colors.text }]}>
                       {item.card_name}
@@ -307,7 +307,7 @@ export default function ReportsScreen() {
                         style={[
                           styles.cardBarFill,
                           {
-                            backgroundColor: item.card_color,
+                            backgroundColor: item.card_color || colors.primary,
                             width: `${calculatePercentage(item.total, totalCardSpending)}%`,
                           },
                         ]}

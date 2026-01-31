@@ -49,6 +49,16 @@ interface FutureSummary {
   reduction: number;
 }
 
+interface CompletedPurchase {
+  purchaseId: number;
+  description: string;
+  cardName: string;
+  totalAmount: number;
+  installments: number;
+  date: string;
+  completedAt: string;
+}
+
 export default function InstallmentsScreen() {
   const { colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
@@ -58,6 +68,8 @@ export default function InstallmentsScreen() {
   const [cardsPending, setCardsPending] = useState<CardPending[]>([]);
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InstallmentItem | null>(null);
+  const [completedPurchases, setCompletedPurchases] = useState<CompletedPurchase[]>([]);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const loadData = async () => {
     try {
@@ -193,6 +205,44 @@ export default function InstallmentsScreen() {
       });
 
       setFutureSummary(summary);
+
+      // Carregar compras finalizadas (todas as parcelas pagas)
+      const completedData = await getAll<{
+        purchase_id: number;
+        description: string;
+        card_name: string;
+        total_amount: number;
+        installments: number;
+        date: string;
+        completed_at: string;
+      }>(`
+        SELECT
+          cp.id as purchase_id,
+          cp.description,
+          cc.name as card_name,
+          cp.total_amount,
+          cp.installments,
+          cp.date,
+          MAX(i.paid_at) as completed_at
+        FROM credit_purchases cp
+        JOIN credit_cards cc ON cp.card_id = cc.id
+        JOIN installments i ON i.purchase_id = cp.id
+        WHERE cp.installments > 1
+        GROUP BY cp.id
+        HAVING COUNT(CASE WHEN i.status = 'pending' THEN 1 END) = 0
+        ORDER BY MAX(i.paid_at) DESC
+        LIMIT 20
+      `);
+
+      setCompletedPurchases(completedData.map(d => ({
+        purchaseId: d.purchase_id,
+        description: d.description,
+        cardName: d.card_name,
+        totalAmount: d.total_amount,
+        installments: d.installments,
+        date: d.date,
+        completedAt: d.completed_at,
+      })));
     } catch (error) {
       console.log('Error loading installments:', error);
     }
@@ -543,6 +593,64 @@ export default function InstallmentsScreen() {
           );
         })
       )}
+
+      {/* Compras Finalizadas */}
+      {completedPurchases.length > 0 && (
+        <>
+          <Pressable
+            style={styles.completedSectionHeader}
+            onPress={() => setShowCompleted(!showCompleted)}
+          >
+            <View style={styles.completedHeaderLeft}>
+              <Ionicons name="checkmark-done-circle" size={20} color={colors.success} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Compras Finalizadas
+              </Text>
+              <View style={[styles.completedBadge, { backgroundColor: colors.success + '20' }]}>
+                <Text style={[styles.completedBadgeText, { color: colors.success }]}>
+                  {completedPurchases.length}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name={showCompleted ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textMuted}
+            />
+          </Pressable>
+
+          {showCompleted && completedPurchases.map(item => (
+            <View
+              key={item.purchaseId}
+              style={[styles.completedCard, { backgroundColor: colors.surface }]}
+            >
+              <View style={styles.completedCardTop}>
+                <View
+                  style={[styles.statusIndicator, { backgroundColor: colors.success }]}
+                />
+                <View style={styles.cardInfo}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>
+                    {item.description}
+                  </Text>
+                  <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                    {item.cardName} • {item.installments}x
+                  </Text>
+                </View>
+                <View style={styles.cardRight}>
+                  <Text style={[styles.completedAmount, { color: colors.success }]}>
+                    {formatCurrency(item.totalAmount)}
+                  </Text>
+                  <View style={[styles.completedTag, { backgroundColor: colors.success + '20' }]}>
+                    <Text style={[styles.completedTagText, { color: colors.success }]}>
+                      Pago
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -553,7 +661,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.md,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 120,
   },
   monthCard: {
     borderRadius: BorderRadius.xl,
@@ -729,5 +837,50 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: FontSize.sm,
     fontWeight: '500',
+  },
+  completedSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  completedHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  completedBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  completedBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+  },
+  completedCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  completedCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completedAmount: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  completedTag: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+    marginTop: 4,
+  },
+  completedTagText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
   },
 });

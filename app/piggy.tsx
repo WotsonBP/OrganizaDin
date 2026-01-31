@@ -38,7 +38,7 @@ interface BalanceInfo {
 }
 
 export default function PiggyScreen() {
-  const { colors } = useTheme();
+  const { colors, hideValues, toggleHideValues } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [password, setPassword] = useState('');
@@ -68,6 +68,10 @@ export default function PiggyScreen() {
   const [balanceTransferPiggy, setBalanceTransferPiggy] = useState<Piggy | null>(null);
   const [balanceTransferAmount, setBalanceTransferAmount] = useState('');
   const [availableBalance, setAvailableBalance] = useState(0);
+
+  const [showPiggyToBalance, setShowPiggyToBalance] = useState(false);
+  const [piggyToBalancePiggy, setPiggyToBalancePiggy] = useState<Piggy | null>(null);
+  const [piggyToBalanceAmount, setPiggyToBalanceAmount] = useState('');
 
   const [showHistory, setShowHistory] = useState(false);
   const [historyPiggy, setHistoryPiggy] = useState<Piggy | null>(null);
@@ -337,6 +341,53 @@ export default function PiggyScreen() {
     }
   };
 
+  const handleTransferToBalance = async () => {
+    if (!piggyToBalancePiggy) return;
+
+    const amount = parseFloat(piggyToBalanceAmount.replace(',', '.'));
+    if (!amount || amount <= 0) {
+      Alert.alert('Erro', 'Digite um valor válido');
+      return;
+    }
+
+    if (amount > piggyToBalancePiggy.balance) {
+      Alert.alert('Erro', 'Saldo insuficiente no porquinho');
+      return;
+    }
+
+    try {
+      // Atualizar saldo do porquinho
+      await runQuery(
+        'UPDATE piggies SET balance = balance - ?, updated_at = datetime("now") WHERE id = ?',
+        [amount, piggyToBalancePiggy.id]
+      );
+
+      // Registrar entrada no saldo
+      await runQuery(
+        `INSERT INTO balance_transactions (amount, description, date, type, method)
+         VALUES (?, ?, date('now'), 'income', 'cash')`,
+        [amount, `Transferência do porquinho: ${piggyToBalancePiggy.name}`]
+      );
+
+      // Registrar saída no porquinho
+      await runQuery(
+        `INSERT INTO piggy_transactions (piggy_id, amount, type, description, date)
+         VALUES (?, ?, 'withdraw', ?, date('now'))`,
+        [piggyToBalancePiggy.id, amount, 'Transferência para o saldo']
+      );
+
+      setShowPiggyToBalance(false);
+      setPiggyToBalancePiggy(null);
+      setPiggyToBalanceAmount('');
+      await loadData();
+
+      Alert.alert('Sucesso', 'Transferência realizada!');
+    } catch (error) {
+      console.log('Error transferring to balance:', error);
+      Alert.alert('Erro', 'Não foi possível realizar a transferência');
+    }
+  };
+
   const loadHistory = async (piggy: Piggy) => {
     try {
       const history = await getAll<PiggyTransaction>(
@@ -414,6 +465,11 @@ export default function PiggyScreen() {
       style: 'currency',
       currency: 'BRL',
     });
+  };
+
+  const displayCurrency = (value: number) => {
+    if (hideValues) return 'R$ •••••';
+    return formatCurrency(value);
   };
 
   const formatDate = (dateStr: string) => {
@@ -526,8 +582,17 @@ export default function PiggyScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Total Guardado */}
       <View style={[styles.totalCard, { backgroundColor: colors.primaryDark }]}>
-        <Text style={styles.totalLabel}>Total Guardado</Text>
-        <Text style={styles.totalValue}>{formatCurrency(totalSaved)}</Text>
+        <View style={styles.totalCardHeader}>
+          <Text style={styles.totalLabel}>Total Guardado</Text>
+          <Pressable onPress={toggleHideValues} hitSlop={8}>
+            <Ionicons
+              name={hideValues ? 'eye-off-outline' : 'eye-outline'}
+              size={22}
+              color="rgba(255,255,255,0.7)"
+            />
+          </Pressable>
+        </View>
+        <Text style={styles.totalValue}>{displayCurrency(totalSaved)}</Text>
       </View>
 
       <ScrollView
@@ -564,7 +629,7 @@ export default function PiggyScreen() {
                     {piggy.name}
                   </Text>
                   <Text style={[styles.piggyBalance, { color: colors.primary }]}>
-                    {formatCurrency(piggy.balance)}
+                    {displayCurrency(piggy.balance)}
                   </Text>
                 </View>
                 <View style={styles.piggyHeaderActions}>
@@ -649,6 +714,18 @@ export default function PiggyScreen() {
             <Ionicons name="cash" size={24} color={colors.success} />
             <Text style={[styles.addPiggyText, { color: colors.success }]}>
               Transferir do Saldo
+            </Text>
+          </Pressable>
+        )}
+
+        {piggies.length > 0 && (
+          <Pressable
+            style={[styles.addPiggyButton, { backgroundColor: colors.surface }]}
+            onPress={() => setShowPiggyToBalance(true)}
+          >
+            <Ionicons name="wallet" size={24} color={colors.warning} />
+            <Text style={[styles.addPiggyText, { color: colors.warning }]}>
+              Transferir para o Saldo
             </Text>
           </Pressable>
         )}
@@ -895,6 +972,71 @@ export default function PiggyScreen() {
         </View>
       </Modal>
 
+      {/* Modal Transferir para o Saldo */}
+      <Modal visible={showPiggyToBalance} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Transferir para o Saldo
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+              Transferir dinheiro de um porquinho para o saldo disponível
+            </Text>
+
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>DE:</Text>
+            <ScrollView style={styles.pickerScroll} horizontal showsHorizontalScrollIndicator={false}>
+              {piggies.map(piggy => (
+                <Pressable
+                  key={piggy.id}
+                  style={[
+                    styles.pickerItem,
+                    {
+                      backgroundColor: piggyToBalancePiggy?.id === piggy.id ? colors.primary : colors.surfaceVariant,
+                    },
+                  ]}
+                  onPress={() => setPiggyToBalancePiggy(piggy)}
+                >
+                  <Text style={[styles.pickerText, { color: piggyToBalancePiggy?.id === piggy.id ? '#FFFFFF' : colors.text }]}>
+                    {piggy.name}
+                  </Text>
+                  <Text style={[styles.pickerBalance, { color: piggyToBalancePiggy?.id === piggy.id ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}>
+                    {formatCurrency(piggy.balance)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surfaceVariant, color: colors.text, marginTop: Spacing.md }]}
+              value={piggyToBalanceAmount}
+              onChangeText={setPiggyToBalanceAmount}
+              placeholder="Valor"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowPiggyToBalance(false);
+                  setPiggyToBalancePiggy(null);
+                  setPiggyToBalanceAmount('');
+                }}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.text }]}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, { backgroundColor: colors.warning }]}
+                onPress={handleTransferToBalance}
+              >
+                <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Transferir</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal Histórico */}
       <Modal visible={showHistory} transparent animationType="slide">
         <View style={[styles.historyModal, { backgroundColor: colors.background }]}>
@@ -1059,10 +1201,15 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     alignItems: 'center',
   },
+  totalCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
   totalLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: FontSize.md,
-    marginBottom: Spacing.xs,
   },
   totalValue: {
     color: '#FFFFFF',

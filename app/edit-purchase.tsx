@@ -9,6 +9,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -81,6 +84,7 @@ export default function EditPurchaseScreen() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [cards, setCards] = useState<CreditCard[]>([]);
+  const [viewingImageUri, setViewingImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -677,29 +681,50 @@ export default function EditPurchaseScreen() {
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               Foto/Comprovante (opcional)
             </Text>
-            <Pressable
-              style={[styles.imageButton, { backgroundColor: colors.surface }]}
-              onPress={handlePickImage}
-            >
-              {imageUri ? (
-                <View style={styles.imagePreview}>
-                  <Ionicons name="image" size={24} color={colors.success} />
-                  <Text style={[styles.imageText, { color: colors.success }]}>
-                    Imagem selecionada
-                  </Text>
-                  <Pressable onPress={() => setImageUri(null)}>
-                    <Ionicons name="close-circle" size={20} color={colors.error} />
+            {imageUri ? (
+              <View style={[styles.imageContainer, { backgroundColor: colors.surface }]}>
+                <Pressable onPress={() => setViewingImageUri(imageUri)}>
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.imageThumb}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+                <View style={styles.imageActions}>
+                  <Pressable
+                    style={[styles.imageActionBtn, { backgroundColor: colors.primary + '20' }]}
+                    onPress={() => setViewingImageUri(imageUri)}
+                  >
+                    <Ionicons name="eye" size={18} color={colors.primary} />
+                    <Text style={[styles.imageActionText, { color: colors.primary }]}>Ver</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.imageActionBtn, { backgroundColor: colors.info + '20' }]}
+                    onPress={handlePickImage}
+                  >
+                    <Ionicons name="swap-horizontal" size={18} color={colors.info} />
+                    <Text style={[styles.imageActionText, { color: colors.info }]}>Trocar</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.imageActionBtn, { backgroundColor: colors.error + '20' }]}
+                    onPress={() => setImageUri(null)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                    <Text style={[styles.imageActionText, { color: colors.error }]}>Remover</Text>
                   </Pressable>
                 </View>
-              ) : (
-                <>
-                  <Ionicons name="camera-outline" size={24} color={colors.textMuted} />
-                  <Text style={[styles.imageText, { color: colors.textMuted }]}>
-                    Adicionar imagem
-                  </Text>
-                </>
-              )}
-            </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                style={[styles.imageButton, { backgroundColor: colors.surface }]}
+                onPress={handlePickImage}
+              >
+                <Ionicons name="camera-outline" size={24} color={colors.textMuted} />
+                <Text style={[styles.imageText, { color: colors.textMuted }]}>
+                  Adicionar imagem
+                </Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -722,6 +747,25 @@ export default function EditPurchaseScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Modal Visualizar Imagem */}
+      <Modal visible={!!viewingImageUri} transparent animationType="fade">
+        <View style={styles.imageViewerOverlay}>
+          <Pressable
+            style={styles.imageViewerClose}
+            onPress={() => setViewingImageUri(null)}
+          >
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </Pressable>
+          {viewingImageUri && (
+            <Image
+              source={{ uri: viewingImageUri }}
+              style={styles.imageViewerImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -837,13 +881,54 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     gap: Spacing.sm,
   },
-  imagePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
   imageText: {
     fontSize: FontSize.md,
+  },
+  imageContainer: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    alignItems: 'center',
+  },
+  imageThumb: {
+    width: '100%',
+    height: 200,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  imageActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    width: '100%',
+  },
+  imageActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  imageActionText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerClose: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: Spacing.sm,
+  },
+  imageViewerImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.7,
   },
   actionButtons: {
     flexDirection: 'row',

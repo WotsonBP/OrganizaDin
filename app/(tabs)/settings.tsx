@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.md,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 120,
   },
   sectionTitle: {
     fontSize: FontSize.xs,

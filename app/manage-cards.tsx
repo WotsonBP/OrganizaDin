@@ -65,7 +65,7 @@ export default function ManageCardsScreen() {
   const openEditModal = (card: CreditCard) => {
     setEditingCard(card);
     setName(card.name);
-    setSelectedColor(card.color);
+    setSelectedColor(card.color || COLOR_OPTIONS[0]);
     setShowModal(true);
   };
 
@@ -164,7 +164,7 @@ export default function ManageCardsScreen() {
                   <View
                     style={[
                       styles.cardColorIndicator,
-                      { backgroundColor: card.color },
+                      { backgroundColor: card.color || '#4ECDC4' },
                     ]}
                   />
                   <Text style={[styles.cardName, { color: colors.text }]}>

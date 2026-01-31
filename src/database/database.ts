@@ -9,13 +9,38 @@ const DATABASE_NAME = 'organizadin.db';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (db) {
-    return db;
-  }
+function openDB(): SQLite.SQLiteDatabase {
+  const database = SQLite.openDatabaseSync(DATABASE_NAME);
+  database.execSync('PRAGMA journal_mode = WAL;');
+  database.execSync('PRAGMA foreign_keys = ON;');
+  return database;
+}
 
-  db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!db) {
+    db = openDB();
+  }
   return db;
+}
+
+function isConnectionError(error: unknown): boolean {
+  const message = String((error as any)?.message || error || '');
+  return (
+    message.includes('NullPointerException') ||
+    message.includes('NativeDatabase') ||
+    message.includes('has been rejected')
+  );
+}
+
+async function resetConnection(): Promise<void> {
+  if (db) {
+    try {
+      db.closeSync();
+    } catch {
+      // ignore close errors
+    }
+  }
+  db = null;
 }
 
 /** Migração: adiciona coluna se não existir (para bancos já criados). */
@@ -32,6 +57,14 @@ async function runMigrations(database: SQLite.SQLiteDatabase): Promise<void> {
   if (!(await hasColumn('credit_purchases', 'notes'))) {
     await database.runAsync('ALTER TABLE credit_purchases ADD COLUMN notes TEXT');
   }
+  if (!(await hasColumn('user_settings', 'hide_values'))) {
+    await database.runAsync('ALTER TABLE user_settings ADD COLUMN hide_values INTEGER DEFAULT 0');
+  }
+
+  // Corrigir cartões sem cor definida
+  await database.runAsync(
+    `UPDATE credit_cards SET color = '#4ECDC4' WHERE color IS NULL`
+  );
 
   // Remover categorias duplicadas (manter uma por nome, com menor id)
   type DupRow = { name: string; cnt: number };
@@ -84,34 +117,61 @@ export async function initializeDatabase(): Promise<void> {
 }
 
 export async function closeDatabase(): Promise<void> {
-  if (db) {
-    await db.closeAsync();
-    db = null;
-  }
+  await resetConnection();
 }
 
-// Funções auxiliares para queries
+// Funções auxiliares para queries com reconexão automática
 
 export async function runQuery(
   sql: string,
   params: (string | number | null)[] = []
 ): Promise<SQLite.SQLiteRunResult> {
-  const database = await getDatabase();
-  return database.runAsync(sql, params);
+  try {
+    const database = await getDatabase();
+    return await database.runAsync(sql, params);
+  } catch (error) {
+    if (isConnectionError(error)) {
+      console.log('Database connection lost (runQuery), reconnecting...');
+      await resetConnection();
+      const database = await getDatabase();
+      return database.runAsync(sql, params);
+    }
+    throw error;
+  }
 }
 
 export async function getAll<T>(
   sql: string,
   params: (string | number | null)[] = []
 ): Promise<T[]> {
-  const database = await getDatabase();
-  return database.getAllAsync<T>(sql, params);
+  try {
+    const database = await getDatabase();
+    return await database.getAllAsync<T>(sql, params);
+  } catch (error) {
+    if (isConnectionError(error)) {
+      console.log('Database connection lost (getAll), reconnecting...');
+      await resetConnection();
+      const database = await getDatabase();
+      return database.getAllAsync<T>(sql, params);
+    }
+    throw error;
+  }
 }
 
 export async function getFirst<T>(
   sql: string,
   params: (string | number | null)[] = []
 ): Promise<T | null> {
-  const database = await getDatabase();
-  return database.getFirstAsync<T>(sql, params);
+  try {
+    const database = await getDatabase();
+    return await database.getFirstAsync<T>(sql, params);
+  } catch (error) {
+    if (isConnectionError(error)) {
+      console.log('Database connection lost (getFirst), reconnecting...');
+      await resetConnection();
+      const database = await getDatabase();
+      return database.getFirstAsync<T>(sql, params);
+    }
+    throw error;
+  }
 }

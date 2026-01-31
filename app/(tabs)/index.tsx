@@ -6,6 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   Pressable,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,6 +15,21 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { getAll, getFirst } from '../../src/database';
+
+interface FutureMonth {
+  month: string;
+  total: number;
+}
+
+interface BalanceHistoryItem {
+  id: number;
+  amount: number;
+  description: string;
+  date: string;
+  type: 'income' | 'expense';
+  method: string;
+  notes: string | null;
+}
 
 interface BalanceSummary {
   totalIncome: number;
@@ -41,7 +58,7 @@ interface RecentTransaction {
 }
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
+  const { colors, hideValues, toggleHideValues } = useTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [balance, setBalance] = useState(0);
@@ -49,6 +66,10 @@ export default function HomeScreen() {
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [nextMonthProjection, setNextMonthProjection] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([]);
+  const [showBalanceHistory, setShowBalanceHistory] = useState(false);
+  const [balanceHistory, setBalanceHistory] = useState<BalanceHistoryItem[]>([]);
+  const [showFutureMonths, setShowFutureMonths] = useState(false);
+  const [futureMonths, setFutureMonths] = useState<FutureMonth[]>([]);
 
   const loadData = async () => {
     try {
@@ -99,6 +120,19 @@ export default function HomeScreen() {
 
         const projection = settings.monthly_income - (nextMonthCredit?.totalPending || 0);
         setNextMonthProjection(projection);
+
+        // Carregar meses futuros para previsão expandível
+        const futureData = await getAll<FutureMonth>(`
+          SELECT
+            strftime('%Y-%m', due_date) as month,
+            SUM(amount) as total
+          FROM installments
+          WHERE status = 'pending' AND due_date >= date('now')
+          GROUP BY strftime('%Y-%m', due_date)
+          ORDER BY due_date ASC
+          LIMIT 6
+        `);
+        setFutureMonths(futureData);
       }
 
       // Carregar últimas transações (mix de saldo e crédito)
@@ -157,6 +191,21 @@ export default function HomeScreen() {
     }, [])
   );
 
+  const loadBalanceHistory = async () => {
+    try {
+      const history = await getAll<BalanceHistoryItem>(
+        `SELECT id, amount, description, date, type, method, notes
+         FROM balance_transactions
+         ORDER BY date DESC, id DESC
+         LIMIT 50`
+      );
+      setBalanceHistory(history);
+      setShowBalanceHistory(true);
+    } catch (error) {
+      console.log('Error loading balance history:', error);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
@@ -168,6 +217,11 @@ export default function HomeScreen() {
       style: 'currency',
       currency: 'BRL',
     });
+  };
+
+  const displayCurrency = (value: number) => {
+    if (hideValues) return 'R$ •••••';
+    return formatCurrency(value);
   };
 
   const formatDate = (dateStr: string) => {
@@ -223,10 +277,20 @@ export default function HomeScreen() {
     }
   };
 
+  const getMonthName = (monthStr: string) => {
+    const [year, month] = monthStr.split('-');
+    const months = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return `${months[parseInt(month) - 1]} ${year}`;
+  };
+
   const balanceColor = balance < 150 ? colors.balanceLow : colors.balanceOk;
   const projectionColor = nextMonthProjection >= 0 ? colors.success : colors.error;
 
   return (
+    <>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
@@ -239,17 +303,32 @@ export default function HomeScreen() {
       }
     >
       {/* Card Saldo Disponível */}
-      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+      <Pressable
+        style={[styles.card, { backgroundColor: colors.surface }]}
+        onPress={loadBalanceHistory}
+      >
         <View style={styles.cardHeader}>
           <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
             Saldo Disponível
           </Text>
-          <Ionicons name="wallet-outline" size={24} color={balanceColor} />
+          <View style={styles.cardHeaderIcons}>
+            <Pressable onPress={(e) => { e.stopPropagation(); toggleHideValues(); }} hitSlop={8}>
+              <Ionicons
+                name={hideValues ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
+                color={colors.textMuted}
+              />
+            </Pressable>
+            <Ionicons name="wallet-outline" size={24} color={balanceColor} />
+          </View>
         </View>
         <Text style={[styles.cardValue, { color: balanceColor }]}>
-          {formatCurrency(balance)}
+          {displayCurrency(balance)}
         </Text>
-      </View>
+        <Text style={[styles.cardSubtext, { color: colors.textMuted }]}>
+          Toque para ver histórico
+        </Text>
+      </Pressable>
 
       {/* Card Total Cartão */}
       <View style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -260,7 +339,7 @@ export default function HomeScreen() {
           <Ionicons name="card-outline" size={24} color={colors.warning} />
         </View>
         <Text style={[styles.cardValue, { color: colors.warning }]}>
-          {formatCurrency(creditTotal)}
+          {displayCurrency(creditTotal)}
         </Text>
         <Text style={[styles.cardSubtext, { color: colors.textMuted }]}>
           Este mês
@@ -268,20 +347,63 @@ export default function HomeScreen() {
       </View>
 
       {/* Card Previsão Próximo Mês */}
-      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+      <Pressable
+        style={[styles.card, { backgroundColor: colors.surface }]}
+        onPress={() => setShowFutureMonths(!showFutureMonths)}
+      >
         <View style={styles.cardHeader}>
           <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
             Previsão Próximo Mês
           </Text>
-          <Ionicons name="trending-up-outline" size={24} color={projectionColor} />
+          <View style={styles.cardHeaderIcons}>
+            <Ionicons name="trending-up-outline" size={24} color={projectionColor} />
+            <Ionicons
+              name={showFutureMonths ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textMuted}
+            />
+          </View>
         </View>
         <Text style={[styles.cardValue, { color: projectionColor }]}>
-          {formatCurrency(nextMonthProjection)}
+          {displayCurrency(nextMonthProjection)}
         </Text>
         <Text style={[styles.cardSubtext, { color: colors.textMuted }]}>
-          {nextMonthProjection >= 0 ? 'Vai sobrar' : 'Vai faltar'}
+          {nextMonthProjection >= 0 ? 'Vai sobrar' : 'Vai faltar'} • Toque para expandir
         </Text>
-      </View>
+      </Pressable>
+
+      {/* Meses Futuros Expandidos */}
+      {showFutureMonths && futureMonths.length > 0 && (
+        <View style={styles.futureMonthsContainer}>
+          {futureMonths.map((fm) => {
+            const projected = monthlyIncome - fm.total;
+            const fmColor = projected >= 0 ? colors.success : colors.error;
+            return (
+              <View
+                key={fm.month}
+                style={[styles.futureMonthItem, { backgroundColor: colors.surface }]}
+              >
+                <View style={styles.futureMonthLeft}>
+                  <Text style={[styles.futureMonthName, { color: colors.text }]}>
+                    {getMonthName(fm.month)}
+                  </Text>
+                  <Text style={[styles.futureMonthExpense, { color: colors.warning }]}>
+                    Parcelas: {displayCurrency(fm.total)}
+                  </Text>
+                </View>
+                <View style={styles.futureMonthRight}>
+                  <Text style={[styles.futureMonthProjection, { color: fmColor }]}>
+                    {displayCurrency(projected)}
+                  </Text>
+                  <Text style={[styles.futureMonthLabel, { color: fmColor }]}>
+                    {projected >= 0 ? 'Sobra' : 'Falta'}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Ações Rápidas */}
       <View style={styles.actionsContainer}>
@@ -422,9 +544,11 @@ export default function HomeScreen() {
                     styles.transactionValue,
                     { color: getTransactionColor(transaction) }
                   ]}>
-                    {transaction.type === 'balance' && transaction.transaction_type === 'expense' ? '-' : ''}
-                    {transaction.type === 'balance' && transaction.transaction_type === 'income' ? '+' : ''}
-                    {formatCurrency(transaction.amount)}
+                    {hideValues ? 'R$ •••••' : (
+                      (transaction.type === 'balance' && transaction.transaction_type === 'expense' ? '-' : '') +
+                      (transaction.type === 'balance' && transaction.transaction_type === 'income' ? '+' : '') +
+                      formatCurrency(transaction.amount)
+                    )}
                   </Text>
                 </View>
               </Pressable>
@@ -433,6 +557,67 @@ export default function HomeScreen() {
         )}
       </View>
     </ScrollView>
+
+    {/* Modal Histórico do Saldo */}
+    <Modal visible={showBalanceHistory} transparent animationType="slide">
+      <View style={[styles.balanceHistoryModal, { backgroundColor: colors.background }]}>
+        <View style={styles.balanceHistoryHeader}>
+          <Text style={[styles.balanceHistoryTitle, { color: colors.text }]}>
+            Histórico do Saldo
+          </Text>
+          <Pressable onPress={() => setShowBalanceHistory(false)}>
+            <Ionicons name="close" size={28} color={colors.text} />
+          </Pressable>
+        </View>
+        <FlatList
+          data={balanceHistory}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.balanceHistoryList}
+          ListEmptyComponent={
+            <View style={styles.balanceHistoryEmpty}>
+              <Ionicons name="wallet-outline" size={48} color={colors.textMuted} />
+              <Text style={[styles.balanceHistoryEmptyText, { color: colors.textMuted }]}>
+                Nenhuma movimentação ainda
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={[styles.balanceHistoryItem, { backgroundColor: colors.surface }]}>
+              <View style={[
+                styles.balanceHistoryIcon,
+                { backgroundColor: (item.type === 'income' ? colors.income : colors.expense) + '20' }
+              ]}>
+                <Ionicons
+                  name={item.type === 'income' ? 'arrow-down-circle' : 'arrow-up-circle'}
+                  size={24}
+                  color={item.type === 'income' ? colors.income : colors.expense}
+                />
+              </View>
+              <View style={styles.balanceHistoryInfo}>
+                <Text style={[styles.balanceHistoryDesc, { color: colors.text }]} numberOfLines={1}>
+                  {item.description}
+                </Text>
+                <Text style={[styles.balanceHistoryDate, { color: colors.textMuted }]}>
+                  {formatDate(item.date)} • {getMethodLabel(item.method)}
+                </Text>
+                {item.notes ? (
+                  <Text style={[styles.balanceHistoryNotes, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {item.notes}
+                  </Text>
+                ) : null}
+              </View>
+              <Text style={[
+                styles.balanceHistoryAmount,
+                { color: item.type === 'income' ? colors.income : colors.expense }
+              ]}>
+                {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+              </Text>
+            </View>
+          )}
+        />
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -442,7 +627,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.md,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 120,
   },
   card: {
     borderRadius: BorderRadius.lg,
@@ -455,6 +640,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.sm,
   },
+  cardHeaderIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   cardLabel: {
     fontSize: FontSize.md,
   },
@@ -465,6 +655,40 @@ const styles = StyleSheet.create({
   cardSubtext: {
     fontSize: FontSize.sm,
     marginTop: Spacing.xs,
+  },
+  futureMonthsContainer: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  futureMonthItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  futureMonthLeft: {
+    flex: 1,
+  },
+  futureMonthName: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  futureMonthExpense: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  futureMonthRight: {
+    alignItems: 'flex-end',
+  },
+  futureMonthProjection: {
+    fontSize: FontSize.lg,
+    fontWeight: 'bold',
+  },
+  futureMonthLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '500',
+    marginTop: 2,
   },
   actionsContainer: {
     marginTop: Spacing.md,
@@ -562,6 +786,68 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   transactionValue: {
+    fontSize: FontSize.lg,
+    fontWeight: 'bold',
+  },
+  balanceHistoryModal: {
+    flex: 1,
+    paddingTop: Spacing.xxl,
+  },
+  balanceHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  balanceHistoryTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: 'bold',
+  },
+  balanceHistoryList: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.xxl,
+  },
+  balanceHistoryEmpty: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl,
+  },
+  balanceHistoryEmptyText: {
+    fontSize: FontSize.md,
+    marginTop: Spacing.md,
+  },
+  balanceHistoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+  },
+  balanceHistoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+  },
+  balanceHistoryInfo: {
+    flex: 1,
+  },
+  balanceHistoryDesc: {
+    fontSize: FontSize.md,
+    fontWeight: '500',
+  },
+  balanceHistoryDate: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  balanceHistoryNotes: {
+    fontSize: FontSize.sm,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  balanceHistoryAmount: {
     fontSize: FontSize.lg,
     fontWeight: 'bold',
   },
